@@ -28,11 +28,11 @@ OPCODE = -0x02
 TYPE   = -0x03
 VALUE  = -0x04
 COLORS = {
-  OPCODE => 2,
-  TYPE   => 5,
-  VALUE  => 4,
-  0x01   => 4,
-  0x02   => 2
+  OPCODE => "0;30;42",
+  TYPE   => "0;30;45",
+  VALUE  => "0;30;44",
+  0x01   => "4;34",
+  0x02   => "4;32"
 }
 
 load "lib/player.rb"
@@ -93,11 +93,11 @@ class Vm
     while gets; tick!; end
   end
 
-  def dump_memory_at(address,size = 16,shim_range = nil,shim = nil) #yield(buffer)
+  def dump_memory_at(address,size = 16,previous_context = 0,shim_range = nil,shim = nil) #yield(buffer)
     dump = ""
-    offset = address
+    offset = address-previous_context
     same_colour_left = -1
-    while offset < address+size
+    while offset < address+size-previous_context
 
       if shim_range && offset == (address+shim_range.begin)
         dump << shim
@@ -109,7 +109,7 @@ class Vm
       if self.allocations[offset]
         alloc_colour = COLORS[ self.allocations[offset][0] ]
         same_colour_left = TYPE_SIZES[ self.allocations[offset][0] ]
-        dump << "\e[0;30;4#{alloc_colour}m"
+        dump << "\e[#{alloc_colour}m"
       end
 
       dump << hex(self.memory[offset])
@@ -137,9 +137,11 @@ class Vm
 
     self.args = Opcodes.definitions[opcode][:args_names].map { read_arg! }
 
+    opcode_prelude = 4
     shim_size = (0)...([opcode,args].flatten.compact.size)
     shim = "#{ch(OPCODE,opcode)} #{self.args.map{|a| "#{ch(TYPE,a[0])} #{ch(VALUE,a[1])}" }.join(" ")}"
-    puts dump_memory_at(opcode_start_address,mem_width,shim_size,shim)
+    puts " thread #{self.thread_id.to_s.rjust(2," ")} @ #{opcode_start_address.to_s.rjust(8,"0")} v"
+    puts dump_memory_at(opcode_start_address,mem_width,opcode_prelude,shim_size,shim)
 
     execute!
 
@@ -148,8 +150,7 @@ class Vm
       puts dump_memory_at(VARIABLE_STORAGE_AT+(index*width),width)
     end
 
-    puts "[end of tick]"; puts
-    true
+    puts; true
   rescue => ex
     puts
     puts "!!! #{ex.class.name}: #{ex.message}"
@@ -327,7 +328,7 @@ class Vm
   end
 
   def c(type,val)
-    "\e[3#{COLORS[type]}m#{val}\e[0m"
+    "\e[#{COLORS[type]}m#{val}\e[0m"
   end
 
   def ch(type,val)
