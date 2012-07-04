@@ -8,7 +8,8 @@ TYPE_SHORTHANDS = {
   :int8    => 0x04,
   :int16   => 0x05,
   :float32 => 0x06,
-  :string  => 0x09
+  :string  => 0x09,
+  :vstring => 0x0e
 }
 POINTER_TYPES = {
   :pg_if => { :scope => :global, :size => 4 }
@@ -18,12 +19,16 @@ TYPE_SIZES = {
   0x02 => 4,
   0x04 => 1,
   0x05 => 2,
-  0x09 => nil # ???
+  0x06 => 4,
+  0x09 => nil, # ???
+  0x0e => lambda {},
 }
 GENERIC_TYPE_SHORTHANDS = {
-  :int   => [:int8,:int16,:int32],
-  :float => [:float32]
+  :int    => [:int8,:int16,:int32],
+  :float  => [:float32],
+  :string => [:string,:vstring]
 }
+GENERIC_TYPE_SHORTHANDS[:int_or_float] = GENERIC_TYPE_SHORTHANDS[:int] + GENERIC_TYPE_SHORTHANDS[:float]
 OPCODE = -0x02
 TYPE   = -0x03
 VALUE  = -0x04
@@ -31,9 +36,12 @@ COLORS = {
   OPCODE => "0;30;42",
   TYPE   => "0;30;45",
   VALUE  => "0;30;44",
-  0x01   => "4;34",
-  0x02   => "4;32"
+  0x01   => "4;34", # int val = blue
+  0x02   => "4;32", # pointer = green
+  0x04   => "4;34",
+  0x06   => "4;33", #float val = yellow
 }
+DEFAULT_COLOR = "7"
 
 load "lib/player.rb"
 load "lib/opcode_dsl.rb"
@@ -51,7 +59,9 @@ class Vm
   attr_accessor :args
 
   attr_accessor :thread_id
+  attr_accessor :thread_pcs
   attr_accessor :thread_names
+  attr_accessor :thread_suspended
 
   attr_accessor :missions
   attr_accessor :missions_count
@@ -60,7 +70,12 @@ class Vm
 
   attr_accessor :allocations, :allocation_ids
 
+  attr_accessor :onmission_address
+
+
   attr_accessor :players
+  attr_accessor :actors
+  attr_accessor :pickups
 
   DATA_TYPE_MAX = 31
   VARIABLE_STORAGE_AT = 8
@@ -75,7 +90,9 @@ class Vm
     self.stack = []
 
     self.thread_id = 0
+    self.thread_pcs = []
     self.thread_names = []
+    self.thread_suspended = false
 
     self.engine_vars = OpenStruct.new
 
@@ -83,6 +100,8 @@ class Vm
     self.allocation_ids = Hash.new { |h,k| h[k] = 0 }
 
     self.players = {}
+    self.actors = {}
+    self.pickups = {}
   end
 
   def run
@@ -107,7 +126,7 @@ class Vm
       end
 
       if self.allocations[offset]
-        alloc_colour = COLORS[ self.allocations[offset][0] ]
+        alloc_colour = COLORS[ self.allocations[offset][0] ] || DEFAULT_COLOR
         same_colour_left = TYPE_SIZES[ self.allocations[offset][0] ]
         dump << "\e[#{alloc_colour}m"
       end
@@ -129,7 +148,7 @@ class Vm
   end
 
   def tick!
-    mem_width = 40
+    mem_width = 48#40
 
     opcode_start_address = self.pc
     self.opcode, self.args = read!(2), []
@@ -150,8 +169,16 @@ class Vm
       puts dump_memory_at(VARIABLE_STORAGE_AT+(index*width),width)
     end
 
+    self.thread_pcs[self.thread_id] = self.pc
+    if self.thread_suspended
+      puts "  suspended"
+      self.thread_id = (self.thread_id + 1) % self.thread_pcs.size
+      self.thread_suspended = false
+    end
+
     puts; true
   rescue => ex
+    self.pc -= 2 if [InvalidOpcode].include?(ex.class) #rewind so we get the opcode in the dump
     puts
     puts "!!! #{ex.class.name}: #{ex.message}"
     puts "VM state:"
@@ -174,10 +201,12 @@ class Vm
     self.args.each_with_index do |(type,value),index|
       validate_arg!(definition[:args_types][index],type,translated_opcode,index)
       args_helper.send("#{definition[:args_names][index]}=",arg_to_native(type,value))
+      args_helper.send("#{definition[:args_names][index]}_type=",type)
     end
 
     opcode_method = "opcode_#{translated_opcode}"
-    puts "  #{opcode_method}_#{definition[:sym_name]}(#{args_helper.to_hash.map{|k,v| ":#{k}=>#{v.inspect}" }.join(',')})"
+    nice_args = args_helper.to_hash.reject{|k,v| k =~ /_type$/}.map{|k,v| ":#{k}=>#{v.inspect}" }
+    puts "  #{opcode_method}_#{definition[:sym_name]}(#{nice_args.join(',')})"
     
     send(opcode_method,args_helper)
   end
@@ -185,7 +214,7 @@ class Vm
   include Opcodes
 
   def inspect
-    vars_to_inspect = [:pc,:thread_id,:thread_name,:opcode,:opcode_nice,:args,:stack]
+    vars_to_inspect = [:pc,:thread_name,:opcode,:opcode_nice,:args,:thread_id,:thread_pcs,:stack]
     vars_to_inspect += instance_variables.map { |iv| iv.to_s.gsub(/@/,"").to_sym }
     vars_to_inspect -= [:memory]
     vars_to_inspect.uniq!
@@ -209,6 +238,8 @@ class Vm
   def allocate!(address,data_type,value = nil)
     data_type = TYPE_SHORTHANDS[data_type] if data_type.is_a?(Symbol)
     size = TYPE_SIZES[data_type]
+    raise ArgumentError, "address is nil" unless address
+    raise ArgumentError, "data_type is nil" unless data_type
 
     to_write = if value
       allocation_id = nil # immediate value
@@ -219,9 +250,8 @@ class Vm
     end
 
     self.allocations[address] = [data_type,allocation_id]
-
-    #puts "  #{address} - #{self.allocations[address].inspect}"
-    #puts "  #{[address,size,to_write].inspect}"
+    # puts "  #{address} - #{self.allocations[address].inspect}"
+    # puts "  #{[address,size,to_write].inspect}"
 
     write!(address,size,to_write)
   end
@@ -256,6 +286,9 @@ class Vm
       arg << read!(4)
     when 0x09 # immediate 8-byte string
       arg << read!(8)
+    when 0x0e # variable-length string
+      string_length = read!(1)[0]
+      arg << read!(string_length)
     else
       if arg_type > DATA_TYPE_MAX # immediate type-less 8-byte string
         arg << read!(7)
@@ -283,6 +316,8 @@ class Vm
       arg_value.to_byte_string.unpack("e")[0]
     when  0x09 # immediate 8-byte string
       arg_value.to_byte_string.strip
+    when  0x0e # variable-length string
+      arg_value.to_byte_string.strip[1..-1]
     else
       if arg_type > DATA_TYPE_MAX # immediate type-less 8-byte string
         [arg_type,arg_value].flatten.to_byte_string.strip #FIXME: can have random crap after first null byte, cleanup
@@ -298,6 +333,8 @@ class Vm
     pack_char = case arg_type
     when  0x01 # immediate 32 bit signed int
       "l<"
+    when  0x04 # immediate 8-bit signed int
+      "c"
     when  0x05 # immediate 16 bit signed int 
       "s<"
     when  0x06 # immediate 32-bit float
@@ -328,7 +365,7 @@ class Vm
   end
 
   def c(type,val)
-    "\e[#{COLORS[type]}m#{val}\e[0m"
+    "\e[#{COLORS[type] || DEFAULT_COLOR}m#{val}\e[0m"
   end
 
   def ch(type,val)

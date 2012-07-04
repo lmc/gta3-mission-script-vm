@@ -6,6 +6,7 @@ module Opcodes
   include OpcodeDsl
   int, float, bool, string = :int, :float, :bool, :string
   pg_if = :pg_if
+  int_or_float = :int_or_float
 
   opcode("0002", "jump", jump_location:int) do |args|
     self.pc = args.jump_location
@@ -65,6 +66,10 @@ module Opcodes
     # do nothing!
   end
 
+  opcode("0914", "noop", noop:int ) do |args|
+    # do nothing!
+  end
+
   opcode("0746", "pedgroup_set_relationship", relationship:int, pedgroup_1:int, pedgroup_2:int ) do |args|
     self.engine_vars.pedgroup_relationships ||= {}
     self.engine_vars.pedgroup_relationships[args.pedgroup_1] ||= {}
@@ -81,7 +86,7 @@ module Opcodes
 
   opcode("01F5", "player_get_actor", player_id:pg_if, ret_player_actor_id:pg_if ) do |args|
     pedgroup = self.players[args.player_id].pedgroup ||= 126126
-    # write to actors
+    # TODO: write to actors
     allocate!(args.ret_player_actor_id,:pg_if)
   end
 
@@ -90,6 +95,89 @@ module Opcodes
   end
 
   opcode("0173", "actors_set_z_angle", actor_id:pg_if, z_angle:float ) do |args|
-    # write to actors/players
+    # TODO: write to actors/players
   end
+
+  opcode("0417", "mission_start", mission_id:int ) do |args|
+    # TODO: implement
+    # TODO: does this require passing control to mission thread immediately?
+  end
+
+  opcode("0001", "sleep", time_ms:int ) do |args|
+    # TODO: set up timer for resume?
+    self.thread_suspended = true
+  end
+
+  opcode("0004", "set_global_int", ret_address:pg_if, value:int ) do |args|
+    allocate!(args.ret_address,args.value_type,args.value)
+  end
+
+  opcode("0005", "set_global_float", ret_address:pg_if, value:float ) do |args|
+    puts [args.ret_address,args.value_type,args.value].inspect
+    allocate!(args.ret_address,args.value_type,args.value)
+  end
+
+  opcode("04AE", "set_global_int_or_float", ret_address:pg_if, value:int_or_float ) do |args|
+    puts [args.ret_address,args.value_type,args.value].inspect
+    allocate!(args.ret_address,args.value_type,args.value)
+  end
+
+  opcode("0213", "pickup_create", model:int, flags:int, x:float, y:float, z:float, ret_pickup_id:pg_if ) do |args|
+    # TODO: do something with pickup
+    # flags documented at: http://gtag.gtagaming.com/opcode-database.php?opcode=0213
+    allocate!(args.ret_pickup_id,:pg_if)
+  end
+
+  opcode("0180", "engine_bind_onmission_var", ret_address:pg_if ) do |args|
+    self.onmission_address = args.ret_address
+    allocate!(args.ret_address,:pg_if)
+  end
+
+  opcode("01E8", "paths_disable_in_cube", x1:float, y1:float, z1:float, x2:float, y2:float, z2:float ) do |args|
+    # TODO: do something with this?
+  end
+
+  opcode("014B", "cargen_create", x:float, y:float, z:float, rz:float, model:int, color1:int, color2:int,
+    force_spawn:bool, alarm_pc:int, locked_pc:int, delay_min:int, delay_max:int, ret_cargen_id:pg_if ) do |args|
+    # TODO: do something with this
+    allocate!(args.ret_cargen_id,:pg_if)
+  end
+
+  opcode("014C", "cargen_set_ttl", cargen_id:pg_if, ttl:int ) do |args|
+    # TODO: do something with this
+  end
+
+  opcode("0929", "extscript_create_on_object", extscript_id:int, model:int,
+    priority:int, radius:float, flags:int ) do |args|
+    # TODO: do something with this
+  end
+
+  opcode("07D3", "extscript_create_on_attractor", extscript_id:int, attractor_id:string ) do |args|
+    # TODO: do something with this
+  end
+
+  opcode("0928", "extscript_create_on_ped_id", extscript_id:int, ped_id:int, priority:int ) do |args|
+    # TODO: do something with this
+  end
+
+  opcode("08E8", "extscript_create_on_model", extscript_id:int, model:string ) do |args|
+    # TODO: do something with this
+  end
+
+  opcode("0884", "extscript_set_name", extscript_id:int, name:string ) do |args|
+    # TODO: do something with this
+  end
+
+  opcode("0776", "objgroup_create_objects", objgroup_id:string ) do |args|
+    # TODO: do something with this
+  end
+
+  opcode("0363", "obj_set_visibility_closest_of_type", x:float, y:float, z:float, radius:float, model:int, visible:bool ) do |args|
+    # TODO: do something with this
+  end
+
+  opcode("004F", "thread_create", thread_pc:int, var_args: true ) do |args|
+    # TODO: do something with this
+  end
+
 end
