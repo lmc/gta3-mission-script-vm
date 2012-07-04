@@ -1,8 +1,12 @@
-load "lib/opcodes.rb"
+require "ostruct"
+class OpenStruct; def to_hash; @table; end; end
 
-OPCODE_ARG_COUNTS = {
-  [0x02,0x00] => 1
+TYPE_SHORTHANDS = {
+  :int32 => 0x01
 }
+
+load "lib/opcode_dsl.rb"
+load "lib/opcodes.rb"
 
 class Vm
   attr_accessor :memory # ""
@@ -21,10 +25,12 @@ class Vm
     self.memory = script_binary.bytes.to_a
     self.pc = 0
     self.stack = []
+  end
 
-    tick!
-    tick!
-    tick!
+  def controlled_ticks
+    while gets
+      tick!
+    end
   end
 
   def dump_memory_at(address,size = 16)
@@ -43,28 +49,57 @@ class Vm
     self.opcode = read!(2)
     self.args = []
 
-    OPCODE_ARG_COUNTS[opcode].times do
+    raise "Opcode not implemented" unless Opcodes.definitions[opcode]
+
+    Opcodes.definitions[opcode][:args_count].times do
       self.args << read_arg!
     end
 
-    puts "  opcode #{hex(self.opcode)} args: #{self.args.inspect}"
+    puts "  opcode: #{hex(self.opcode)}, args: #{self.args.map{ |a| [hex([a[0]]), hex(a[1]) ]}.inspect}"
 
     execute!
 
     puts "[end of tick]"
     puts
+
+  rescue => ex
+    puts "!!! Exception: #{ex.message}"
+    puts "VM state:"
+    puts "  #{self.inspect}"
+    puts "Dump at pc:"
+    dump_memory_at(pc)
+    puts "Backtrace:"
+    puts ex.backtrace.join("\n")
+    ex
   end
 
   def execute!
-    translated_opcode = hex(self.opcode.reverse).gsub(" ","") # [02 00] => "0002"
+    definition = Opcodes.definitions[self.opcode]
+    translated_opcode = definition[:nice]
+
+    args_helper = OpenStruct.new
+    self.args.each_with_index do |(type,value),index|
+      expected_arg_type = definition[:args_types][index]
+      raise ArgumentError, "#{translated_opcode} arg #{index}, type #{type} != #{expected_arg_type}" if type != expected_arg_type
+      arg_struct = OpenStruct.new(:value_bytes => value, :value_native => arg_to_native(type,value))
+      args_helper.send("#{definition[:args_names][index]}=",arg_struct)
+    end
+
+    opcode_method = "opcode_#{translated_opcode}"
+    puts "  #{opcode_method}(#{args_helper.to_hash.map{|k,v| ":#{k}=>#{v.value_native}" }.join(',')})"
     
-    send("opcode_#{translated_opcode}",*self.args)
+    send(opcode_method,args_helper)
   end
 
   include Opcodes
 
   def inspect
-    "pc: #{pc}"
+    vars_to_inspect = [:pc,:opcode,:opcode_nice,:args,:stack]
+    "#<#{self.class.name} #{vars_to_inspect.map{|var| "#{var}=#{send(var).inspect}" }.join(" ") }>"
+  end
+
+  def opcode_nice
+    arg_to_native(-0x01,self.opcode).to_s(16)
   end
 
   protected
@@ -88,10 +123,16 @@ class Vm
     end
     arg
   end
-end
 
-# 0 - 02 00 01 20 ab 00 00 73 00 00 00 00 00 00 00 00 00
-#   opcode 02 00 args: [[1, [32, 171, 0, 0]]]
+  def arg_to_native(arg_type,arg_value)
+    case arg_type
+    when -0x01 #interal type for opcodes
+      arg_value.to_byte_string.unpack("S<")[0]
+    when  0x01
+      arg_value.to_byte_string.unpack("l<")[0]
+    end
+  end
+end
 
 class Array
   def to_byte_string

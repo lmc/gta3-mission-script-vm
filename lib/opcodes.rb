@@ -1,9 +1,11 @@
 module Opcodes
-  def opcode_0002(jump_location)
-    raise ArgumentError unless jump_location[0] == 0x01
-    offset = jump_location[1].to_byte_string.unpack("l<")[0]
-    puts "found jump to #{offset}?"
-    dump_memory_at(offset)
-    self.pc = offset
+  class << self
+    attr_accessor :definitions
+  end
+  self.definitions = {}
+  include OpcodeDsl
+
+  opcode(:jump, "0002", :jump_location => :int32) do |args|
+    self.pc = args.jump_location.value_native
   end
 end
