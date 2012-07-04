@@ -51,12 +51,24 @@ module Opcodes
     self.engine_vars.game_stats[args.var_id.value_native] = args.value.value_native
   end
 
-  # player_id is a returned global variable
   opcode("0053", "player_create", model:int, x:float, y:float, z:float, player_id:pg_if ) do |args|
-    # do something??
-    #puts args.player_id.value_native
-    #puts args.player_id.value_bytes
-    #write!(args.player_id.value_native,4,"PL01".bytes.to_a)
-    allocate!(args.player_id.value_native,:pg_if)
+    address = args.player_id.value_native
+    self.players[address] = Player.new(
+      :model => args.model.value_native,
+      :x => args.x.value_native,
+      :y => args.y.value_native,
+      :z => args.z.value_native,
+    )
+    allocate!(address,:pg_if)
+  end
+
+  opcode("06CF", "noop", noop:int ) do |args|
+    # do nothing!
+  end
+
+  opcode("0746", "pedgroup_set_relationship", relationship:int, pedgroup_1:int, pedgroup_2:int ) do |args|
+    self.engine_vars.pedgroup_relationships ||= {}
+    self.engine_vars.pedgroup_relationships[args.pedgroup_1.value_native] ||= {}
+    self.engine_vars.pedgroup_relationships[args.pedgroup_1.value_native][args.pedgroup_2.value_native] = args.relationship.value_native
   end
 end

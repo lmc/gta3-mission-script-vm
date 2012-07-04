@@ -24,6 +24,7 @@ COLORS = {
   :pg_if  => 2
 }
 
+load "lib/player.rb"
 load "lib/opcode_dsl.rb"
 load "lib/opcodes.rb"
 
@@ -48,6 +49,8 @@ class Vm
 
   attr_accessor :allocations, :allocation_ids
 
+  attr_accessor :players
+
   DATA_TYPE_MAX = 31
   VARIABLE_STORAGE_AT = 8
 
@@ -67,6 +70,8 @@ class Vm
 
     self.allocations = {} # address => [pointer_type,id]
     self.allocation_ids = Hash.new { |h,k| h[k] = 0 }
+
+    self.players = {}
   end
 
   def run
@@ -165,6 +170,8 @@ class Vm
 
   protected
 
+  # in the real game, we would normally be writing a pointer to a native game object
+  # but instead, we'll just auto-increment an id and store that, referencing things by their address instead
   def allocate!(address,pointer_type)
     definition = POINTER_TYPES[pointer_type]
     allocation_id = self.allocation_ids[pointer_type] += 1
