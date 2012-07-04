@@ -8,6 +8,8 @@ module Opcodes
   pg_if = :pg_if
   int_or_float = :int_or_float
 
+  SWITCH_THREAD_ON_INIT = true
+
   opcode("0002", "jump", jump_location:int) do |args|
     self.pc = args.jump_location
   end
@@ -176,8 +178,14 @@ module Opcodes
     # TODO: do something with this
   end
 
-  opcode("004F", "thread_create", thread_pc:int, var_args: true ) do |args|
-    # TODO: do something with this
+  opcode("004F", "thread_create_with_args", thread_pc:int, var_args: true ) do |args|
+    self.thread_pcs << args.thread_pc
+    # TODO: load var_args into thread local vars
+    self.thread_switch_to_id = self.thread_pcs.size-1 if SWITCH_THREAD_ON_INIT
   end
 
+  opcode("00D7", "thread_create", thread_pc:int ) do |args|
+    self.thread_pcs << args.thread_pc
+    self.thread_switch_to_id = self.thread_pcs.size-1 if SWITCH_THREAD_ON_INIT
+  end
 end

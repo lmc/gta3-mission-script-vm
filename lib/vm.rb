@@ -62,6 +62,7 @@ class Vm
   attr_accessor :thread_pcs
   attr_accessor :thread_names
   attr_accessor :thread_suspended
+  attr_accessor :thread_switch_to_id
 
   attr_accessor :missions
   attr_accessor :missions_count
@@ -90,7 +91,7 @@ class Vm
     self.stack = []
 
     self.thread_id = 0
-    self.thread_pcs = []
+    self.thread_pcs = [0]
     self.thread_names = []
     self.thread_suspended = false
 
@@ -150,6 +151,7 @@ class Vm
   def tick!
     mem_width = 48#40
 
+    self.pc = self.thread_pcs[self.thread_id]
     opcode_start_address = self.pc
     self.opcode, self.args = read!(2), []
     raise InvalidOpcode, "#{opcode_nice} not implemented" unless Opcodes.definitions[opcode]
@@ -165,7 +167,7 @@ class Vm
 
     execute!
 
-    width,rows = mem_width, 2
+    width,rows = mem_width, 0
     rows.times do |index|
       puts dump_memory_at(VARIABLE_STORAGE_AT+(index*width),width)
     end
@@ -173,8 +175,13 @@ class Vm
     self.thread_pcs[self.thread_id] = self.pc
     if self.thread_suspended
       puts "  suspended"
-      self.thread_id = (self.thread_id + 1) % self.thread_pcs.size
+      self.thread_switch_to_id = (self.thread_id + 1) % self.thread_pcs.size
       self.thread_suspended = false
+    end
+    if self.thread_switch_to_id
+      puts " switching to thread #{self.thread_switch_to_id}"
+      self.thread_id = self.thread_switch_to_id
+      self.thread_switch_to_id = false
     end
 
     puts; true
@@ -221,7 +228,6 @@ class Vm
         args_helper.send("#{name}_type=",type)
       end
     end
-    puts native_args.inspect
 
     opcode_method = "opcode_#{translated_opcode}"
     nice_args = args_helper.to_hash.reject{|k,v| k =~ /_type$/}.map{|k,v| ":#{k}=>#{v.inspect}" }
