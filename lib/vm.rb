@@ -154,11 +154,12 @@ class Vm
     self.opcode, self.args = read!(2), []
     raise InvalidOpcode, "#{opcode_nice} not implemented" unless Opcodes.definitions[opcode]
 
-    self.args = Opcodes.definitions[opcode][:args_names].map { read_arg! }
+    #self.args = Opcodes.definitions[opcode][:args_names].map { read_arg! }
+    self.args = read_args!
 
     opcode_prelude = 4
     shim_size = (0)...([opcode,args].flatten.compact.size)
-    shim = "#{ch(OPCODE,opcode)} #{self.args.map{|a| "#{ch(TYPE,a[0])} #{ch(VALUE,a[1])}" }.join(" ")}"
+    shim = "#{ch(OPCODE,opcode)} #{self.args.map{|a| "#{ch(TYPE,a[0])} #{a[1] ? ch(VALUE,a[1]) : '00'}" }.join(" ")}"
     puts " thread #{self.thread_id.to_s.rjust(2," ")} @ #{opcode_start_address.to_s.rjust(8,"0")} v"
     puts dump_memory_at(opcode_start_address,mem_width,opcode_prelude,shim_size,shim)
 
@@ -197,12 +198,30 @@ class Vm
     definition = Opcodes.definitions[self.opcode]
     translated_opcode = definition[:nice]
 
-    args_helper = OpenStruct.new
+    # TODO: will this actually handle variable-length arg lists?
+    native_args = []
     self.args.each_with_index do |(type,value),index|
       validate_arg!(definition[:args_types][index],type,translated_opcode,index)
-      args_helper.send("#{definition[:args_names][index]}=",arg_to_native(type,value))
-      args_helper.send("#{definition[:args_names][index]}_type=",type)
+
+      if type == 0x00 # end of variable-length arg list
+        start_arg = definition[:args_names].index(:var_args)
+        native_args[start_arg..-1] = [[:var_args,0x00,native_args[start_arg..-1]]]
+      else
+        native_args << [ definition[:args_names][index], type, arg_to_native(type,value) ]
+      end
     end
+
+    args_helper = OpenStruct.new
+    native_args.each do |(name,type,native_value)|
+      if native_value.is_a?(Array)
+        args_helper.send("var_args=",native_value.map{ |a| a[2] })
+        args_helper.send("var_args_type=",native_value.map{ |a| a[1] })
+      else
+        args_helper.send("#{name}=",native_value)
+        args_helper.send("#{name}_type=",type)
+      end
+    end
+    puts native_args.inspect
 
     opcode_method = "opcode_#{translated_opcode}"
     nice_args = args_helper.to_hash.reject{|k,v| k =~ /_type$/}.map{|k,v| ":#{k}=>#{v.inspect}" }
@@ -299,6 +318,20 @@ class Vm
     arg
   end
 
+  def read_args!
+    arg_def = Opcodes.definitions[opcode]
+    args = []
+    arg_def[:args_count].times do |index|
+      if arg_def[:args_names][index] == :var_args
+        args << read_arg! while read(1)[0] != 0x00
+        args << read!(1)
+      else
+        args << read_arg!
+      end
+    end
+    args
+  end
+
   # p much everything is little-endian
   def arg_to_native(arg_type,arg_value)
     case arg_type
@@ -346,6 +379,7 @@ class Vm
   end
 
   def validate_arg(expected_arg_type,arg_type)
+    return true if expected_arg_type == true && arg_type == 0x00 # end of variable-length arg list
     return true if expected_arg_type == :string && arg_type > DATA_TYPE_MAX # immediate type-less 8-byte string
     allowable_arg_types = GENERIC_TYPE_SHORTHANDS[expected_arg_type] || [expected_arg_type]
     allowable_arg_types.map { |type| TYPE_SHORTHANDS[type] }.include?(arg_type)
