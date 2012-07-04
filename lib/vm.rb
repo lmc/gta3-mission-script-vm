@@ -13,15 +13,26 @@ TYPE_SHORTHANDS = {
 POINTER_TYPES = {
   :pg_if => { :scope => :global, :size => 4 }
 }
+TYPE_SIZES = {
+  0x01 => 4,
+  0x02 => 4,
+  0x04 => 1,
+  0x05 => 2,
+  0x09 => nil # ???
+}
 GENERIC_TYPE_SHORTHANDS = {
   :int   => [:int8,:int16,:int32],
   :float => [:float32]
 }
+OPCODE = -0x02
+TYPE   = -0x03
+VALUE  = -0x04
 COLORS = {
-  :opcode => 2,
-  :type   => 5,
-  :value  => 4,
-  :pg_if  => 2
+  OPCODE => 2,
+  TYPE   => 5,
+  VALUE  => 4,
+  0x01   => 4,
+  0x02   => 2
 }
 
 load "lib/player.rb"
@@ -82,39 +93,60 @@ class Vm
     while gets; tick!; end
   end
 
-  def dump_memory_at(address,size = 16)
+  def dump_memory_at(address,size = 16,shim_range = nil,shim = nil) #yield(buffer)
     dump = ""
     offset = address
     same_colour_left = -1
     while offset < address+size
+
+      if shim_range && offset == (address+shim_range.begin)
+        dump << shim
+        dump << " " unless [2].include?(shim_range.end) #why? no idea
+        offset = (address+shim_range.end)
+        next
+      end
+
       if self.allocations[offset]
         alloc_colour = COLORS[ self.allocations[offset][0] ]
-        same_colour_left = POINTER_TYPES[ self.allocations[offset][0] ][:size]
+        same_colour_left = TYPE_SIZES[ self.allocations[offset][0] ]
         dump << "\e[0;30;4#{alloc_colour}m"
       end
+
       dump << hex(self.memory[offset])
       same_colour_left -= 1
+
       if same_colour_left == 0
         dump << "\e[0m"
       end
+
       dump << " "
       offset += 1
     end
+
+    yield(dump) if block_given?
 
     "#{address.to_s.rjust(8,"o")} - #{dump}"
   end
 
   def tick!
-    puts dump_memory_at(VARIABLE_STORAGE_AT,32)
-    puts dump_memory_at(pc,32)
+    mem_width = 40
 
+    opcode_start_address = self.pc
     self.opcode, self.args = read!(2), []
     raise InvalidOpcode, "#{opcode_nice} not implemented" unless Opcodes.definitions[opcode]
 
     self.args = Opcodes.definitions[opcode][:args_names].map { read_arg! }
-    puts "           #{ch(:opcode,opcode)} #{self.args.map{|a| "#{ch(:type,a[0])} #{ch(:value,a[1])}" }.join(" ")}"
+
+    shim_size = (0)...([opcode,args].flatten.compact.size)
+    shim = "#{ch(OPCODE,opcode)} #{self.args.map{|a| "#{ch(TYPE,a[0])} #{ch(VALUE,a[1])}" }.join(" ")}"
+    puts dump_memory_at(opcode_start_address,mem_width,shim_size,shim)
 
     execute!
+
+    width,rows = mem_width, 2
+    rows.times do |index|
+      puts dump_memory_at(VARIABLE_STORAGE_AT+(index*width),width)
+    end
 
     puts "[end of tick]"; puts
     true
@@ -140,12 +172,11 @@ class Vm
     args_helper = OpenStruct.new
     self.args.each_with_index do |(type,value),index|
       validate_arg!(definition[:args_types][index],type,translated_opcode,index)
-      arg_struct = OpenStruct.new(:value_bytes => value, :value_native => arg_to_native(type,value))
-      args_helper.send("#{definition[:args_names][index]}=",arg_struct)
+      args_helper.send("#{definition[:args_names][index]}=",arg_to_native(type,value))
     end
 
     opcode_method = "opcode_#{translated_opcode}"
-    puts "  #{opcode_method}_#{definition[:sym_name]}(#{args_helper.to_hash.map{|k,v| ":#{k}=>#{v.value_native.inspect}" }.join(',')})"
+    puts "  #{opcode_method}_#{definition[:sym_name]}(#{args_helper.to_hash.map{|k,v| ":#{k}=>#{v.inspect}" }.join(',')})"
     
     send(opcode_method,args_helper)
   end
@@ -170,15 +201,28 @@ class Vm
 
   protected
 
+  # for initializing "objects" like players/actors/etc.
   # in the real game, we would normally be writing a pointer to a native game object
   # but instead, we'll just auto-increment an id and store that, referencing things by their address instead
-  def allocate!(address,pointer_type)
-    definition = POINTER_TYPES[pointer_type]
-    allocation_id = self.allocation_ids[pointer_type] += 1
-    self.allocations[address] = [pointer_type,allocation_id]
+  # for things like ints/floats/strings, we'll store the real value
+  def allocate!(address,data_type,value = nil)
+    data_type = TYPE_SHORTHANDS[data_type] if data_type.is_a?(Symbol)
+    size = TYPE_SIZES[data_type]
 
-    id_binary = [allocation_id].pack("l<").bytes.to_a
-    write!(address,definition[:size],id_binary)
+    to_write = if value
+      allocation_id = nil # immediate value
+      native_to_arg_value(data_type,value)
+    else
+      allocation_id = self.allocation_ids[data_type] += 1
+      [allocation_id].pack("l<").bytes.to_a
+    end
+
+    self.allocations[address] = [data_type,allocation_id]
+
+    #puts "  #{address} - #{self.allocations[address].inspect}"
+    #puts "  #{[address,size,to_write].inspect}"
+
+    write!(address,size,to_write)
   end
 
   def write!(address,bytes,byte_array)
@@ -245,6 +289,22 @@ class Vm
         raise InvalidDataType, "unknown data type #{arg_type} (#{hex(arg_type)})"
       end
     end
+  end
+
+  def native_to_arg_value(arg_type,native)
+    native = [native]
+    arg_type = TYPE_SHORTHANDS[arg_type] if arg_type.is_a?(Symbol)
+    pack_char = case arg_type
+    when  0x01 # immediate 32 bit signed int
+      "l<"
+    when  0x05 # immediate 16 bit signed int 
+      "s<"
+    when  0x06 # immediate 32-bit float
+      "e"
+    else
+      raise InvalidDataType, "native_to_arg_value: unknown data type #{arg_type} (#{hex(arg_type)})"
+    end
+    native.pack(pack_char).bytes.to_a
   end
 
   def validate_arg(expected_arg_type,arg_type)
