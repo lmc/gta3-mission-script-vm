@@ -15,6 +15,10 @@ module OpcodeDsl
         define_method("opcode_#{opcode_name_string}",&block)
       end
 
+      def self.engine_var_setter(engine_var_name)
+        lambda { |args| self.engine_vars.send("#{engine_var_name}=", args.send(engine_var_name).value_native) }
+      end
+
     end
   end
 end
