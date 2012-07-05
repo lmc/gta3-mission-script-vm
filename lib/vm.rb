@@ -26,9 +26,11 @@ TYPE_SIZES = {
 GENERIC_TYPE_SHORTHANDS = {
   :int    => [:int8,:int16,:int32],
   :float  => [:float32],
-  :string => [:string,:vstring]
+  :string => [:string,:vstring],
+  :var    => [:pg_if]
 }
 GENERIC_TYPE_SHORTHANDS[:int_or_float] = GENERIC_TYPE_SHORTHANDS[:int] + GENERIC_TYPE_SHORTHANDS[:float]
+GENERIC_TYPE_SHORTHANDS[:int_or_var] = GENERIC_TYPE_SHORTHANDS[:int] + GENERIC_TYPE_SHORTHANDS[:var]
 OPCODE = -0x02
 TYPE   = -0x03
 VALUE  = -0x04
@@ -63,6 +65,8 @@ class Vm
   attr_accessor :thread_names
   attr_accessor :thread_suspended
   attr_accessor :thread_switch_to_id
+
+  attr_accessor :branch_conditions
 
   attr_accessor :missions
   attr_accessor :missions_count
@@ -162,7 +166,7 @@ class Vm
     opcode_prelude = 4
     shim_size = (0)...([opcode,args].flatten.compact.size)
     shim = "#{ch(OPCODE,opcode)} #{self.args.map{|a| "#{ch(TYPE,a[0])} #{a[1] ? ch(VALUE,a[1]) : '00'}" }.join(" ")}"
-    puts " thread #{self.thread_id.to_s.rjust(2," ")} @ #{opcode_start_address.to_s.rjust(8,"0")} v"
+    puts " thread #{self.thread_id.to_s.rjust(2," ")} @ #{opcode_start_address.to_s.rjust(8,"0")} v (threadname:#{(self.thread_names[self.thread_id] || "-")} branch_conditions:#{self.branch_conditions.inspect})"
     puts dump_memory_at(opcode_start_address,mem_width,opcode_prelude,shim_size,shim)
 
     execute!
@@ -175,7 +179,9 @@ class Vm
     self.thread_pcs[self.thread_id] = self.pc
     if self.thread_suspended
       puts "  suspended"
-      self.thread_switch_to_id = (self.thread_id + 1) % self.thread_pcs.size
+      until self.thread_switch_to_id && self.thread_pcs[self.thread_switch_to_id]
+        self.thread_switch_to_id = (self.thread_id + 1) % self.thread_pcs.size
+      end
       self.thread_suspended = false
     end
     if self.thread_switch_to_id
@@ -239,7 +245,7 @@ class Vm
   include Opcodes
 
   def inspect
-    vars_to_inspect = [:pc,:thread_name,:opcode,:opcode_nice,:args,:thread_id,:thread_pcs,:stack]
+    vars_to_inspect = [:pc,:opcode,:opcode_nice,:args,:thread_id,:thread_pcs,:stack,:branch_conditions]
     vars_to_inspect += instance_variables.map { |iv| iv.to_s.gsub(/@/,"").to_sym }
     vars_to_inspect -= [:memory]
     vars_to_inspect.uniq!
@@ -338,8 +344,16 @@ class Vm
     args
   end
 
+  def write_branch_condition!(bool)
+    raise InvalidBranchConditionState, "called conditional opcode outside of if structure" if self.branch_conditions.nil?
+    next_insert = self.branch_conditions.index(nil)
+    raise InvalidBranchConditionState, "too many conditional opcodes (allocated: #{self.branch_conditions.size}" if next_insert >= self.branch_conditions.size
+    self.branch_conditions[next_insert] = bool
+  end
+
   # p much everything is little-endian
   def arg_to_native(arg_type,arg_value)
+    arg_type = TYPE_SHORTHANDS[arg_type] if arg_type.is_a?(Symbol)
     case arg_type
     when -0x01 # interal type for opcodes
       arg_value.to_byte_string.unpack("S<")[0]
@@ -354,12 +368,12 @@ class Vm
     when  0x06 # immediate 32-bit float
       arg_value.to_byte_string.unpack("e")[0]
     when  0x09 # immediate 8-byte string
-      arg_value.to_byte_string.strip
+      arg_value.to_byte_string.strip_to_null
     when  0x0e # variable-length string
-      arg_value.to_byte_string.strip[1..-1]
+      arg_value.to_byte_string[1..-1].strip_to_null
     else
       if arg_type > DATA_TYPE_MAX # immediate type-less 8-byte string
-        [arg_type,arg_value].flatten.to_byte_string.strip #FIXME: can have random crap after first null byte, cleanup
+        [arg_type,arg_value].flatten.to_byte_string.strip_to_null #FIXME: can have random crap after first null byte, cleanup
       else
         raise InvalidDataType, "unknown data type #{arg_type} (#{hex(arg_type)})"
       end
@@ -415,6 +429,14 @@ class Vm
   class InvalidOpcode < StandardError; end
   class InvalidOpcodeArgumentType < StandardError; end
   class InvalidDataType < StandardError; end
+
+  class InvalidBranchConditionState < StandardError; end
+end
+
+class String
+  def strip_to_null
+    gsub(/#{0x00}.+$/,"")
+  end
 end
 
 class Array

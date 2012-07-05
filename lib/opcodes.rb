@@ -6,7 +6,7 @@ module Opcodes
   include OpcodeDsl
   int, float, bool, string = :int, :float, :bool, :string
   pg_if = :pg_if
-  int_or_float = :int_or_float
+  int_or_float, int_or_var = :int_or_float, :int_or_var
 
   SWITCH_THREAD_ON_INIT = true
 
@@ -68,7 +68,7 @@ module Opcodes
     # do nothing!
   end
 
-  opcode("0914", "noop", noop:int ) do |args|
+  opcode("0914", "extscript_noop", noop:int ) do |args|
     # do nothing!
   end
 
@@ -105,7 +105,7 @@ module Opcodes
     # TODO: does this require passing control to mission thread immediately?
   end
 
-  opcode("0001", "sleep", time_ms:int ) do |args|
+  opcode("0001", "sleep", time_ms:int_or_var ) do |args|
     # TODO: set up timer for resume?
     self.thread_suspended = true
   end
@@ -188,4 +188,39 @@ module Opcodes
     self.thread_pcs << args.thread_pc
     self.thread_switch_to_id = self.thread_pcs.size-1 if SWITCH_THREAD_ON_INIT
   end
+
+  opcode("00D7", "thread_destroy" ) do |args|
+    dead_thread_id = self.thread_id
+    self.thread_pcs[dead_thread_id] = nil
+    self.pc = nil
+    self.thread_suspended = true
+  end
+
+  opcode("00D6", "if", conditions_count:int ) do |args|
+    conditions_count = args.conditions_count + 1 # just because
+    self.branch_conditions = Array.new(conditions_count)
+  end
+
+  opcode("0256", "if_player_defined", player_id:pg_if ) do |args|
+    bool = true
+
+    #puts "should player exist? (y/n)"
+    #bool = gets.strip == "y"
+
+    write_branch_condition!( bool ) # TODO: do this properly
+  end
+
+  opcode("004D", "if_false_jump", address:int ) do |args|
+    raise InvalidBranchConditionState, "not enough conditional opcodes (allocated: #{self.branch_conditions.size}" if self.branch_conditions.any?(&:nil?)
+    self.pc = args.address if !self.branch_conditions.all? # all must be true, otherwise jump
+    self.branch_conditions = nil
+  end
+
+  opcode("0038", "if_gv_eq_int", gv_address:pg_if, int:int ) do |args|
+    value_at_gv = arg_to_native(:int32,read(args.gv_address,4))
+    write_branch_condition!( value_at_gv == args.int )
+  end
+
+
+
 end

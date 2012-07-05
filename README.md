@@ -15,6 +15,10 @@ Basic cooperative multi-tasking
 
 ![Basic cooperative multi-tasking](http://i.imgur.com/dD9lj.png)
 
+Does really ugly branching
+
+![Really ugly branching](http://i.imgur.com/dbzjS.png)
+
 
 ```
 % irb                                                                                                                         ✚
