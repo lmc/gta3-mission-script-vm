@@ -32,6 +32,38 @@ class VmHost
     template do
       <<-HTML
         <div class="row">
+          <div class="span12 well current_instruction">
+            <h2>Current instruction</h2>
+            <table>
+              <tr>
+                <td class="opcode"><span class="opcode">#{hex(@vm.opcode)}</span></td>
+                #{@vm.args.map {|(data_type,value)| %(
+                  <td>
+                    <span class="data_type">#{hex(data_type)}</span>
+                    <span class="value">#{hex(value)}</span>
+                  </td>
+                )}.join("\n")}
+              </tr>
+              <tr>
+                <td class="opcode">#{Opcodes.definitions[@vm.opcode][:sym_name]}</td>
+                #{@vm.args.map {|(data_type,value)|
+                attrs = ""
+                value = @vm.arg_to_native(data_type,value)
+                if data_type == TYPE_SHORTHANDS[:pg_if]
+                  attrs << %(href="#" data-address="#{value}")
+                end
+                %(
+                  <td>
+                    <a #{attrs}>
+                      #{value.inspect}
+                    </a>
+                  </td>
+                )}.join("\n")}
+              </tr>
+            </table>
+          </div>
+        </div>
+        <div class="row">
 
           <div class="span2 well threads">
             <h2>Threads</h2>
@@ -58,18 +90,9 @@ class VmHost
             </table>
           </div>
 
-          <div class="span3 well current_instruction">
-            <h2>Current instruction</h2>
-            <span class="opcode">#{hex(@vm.opcode)}</span>
-            #{@vm.args.map {|(data_type,value)| %(
-              <span class="data_type">#{hex(data_type)}</span>
-              <span class="value">#{hex(value)}</span>
-            )}.join("\n")}
-          </div>
-
-          <div class="span6 well memory">
+          <div class="span10 well memory">
             <h2>Memory</h2>
-            #{memory_view(20,8,43808,true)}
+            #{memory_view(36,8,43808,true)}
           </div>
         </div>
       HTML
@@ -94,13 +117,17 @@ class VmHost
           <script type="text/javascript" src="http://twitter.github.com/bootstrap/assets/js/jquery.js"></script>
           <script type="text/javascript" src="http://twitter.github.com/bootstrap/assets/js/bootstrap-tooltip.js"></script>
           <script type="text/javascript" src="http://twitter.github.com/bootstrap/assets/js/bootstrap-popover.js"></script>
+          <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.18/jquery-ui.min.js"></script>
 
           <style>
-            .opcode    { color: #5BB75B; }
-            .data_type { color: #49AFCD; }
-            .value     { color: #0074CC; }
+            span.opcode    { color: #5BB75B; }
+            span.data_type { color: #49AFCD; }
+            span.value     { color: #0074CC; }
 
-            .memory table { font-family: monospace; }
+            .current_instruction td { font-family: monospace; padding-left: 1em; }
+            .current_instruction td.opcode { width: 10em; text-align: right; }
+
+            .memory table tbody { font-family: monospace; display: block; height: 30em; overflow-y: scroll; }
             .memory .address { width: 3em; text-align: right; padding-right: 1em; }
             .memory .allocated   { text-decoration: underline; }
             .memory .data_type_1 { color: #0074CC; }
@@ -139,18 +166,40 @@ class VmHost
             <form action="/reset" method="get" class="form-inline well span1">
               <button type="submit" class="btn btn-danger">Reset</button>
             </form>
-            #{process_stats_view}
           </div>
 
           #{last_exception_view if @last_exception}
 
           #{template_value}
 
+          <div class="row">
+            #{process_stats_view}
+          </div>
+
           <div class="row footer">
             scm
           </div>
 
           <script>
+            $('.current_instruction a').mouseover(function(){
+              $this = $(this);
+              $this.css('background-color',$this.css('color'));
+              $this.css('color','#FFF');
+              var klass = "address_"+$(this).data("address");;
+              var el = $('a.'+klass);
+              el.css('background-color',el.css('color'));
+              el.css('color','#FFF');
+              el.popover('show');
+            });
+            $('.current_instruction a').mouseout(function(){
+              $this = $(this);
+              $this.css('color',$this.css('background-color'));
+              $this.css('background','none');              var klass = "address_"+$(this).data("address");;
+              var el = $('a.'+klass);
+              el.css('color',el.css('background-color'));
+              el.css('background','none');
+              el.popover('hide');
+            });
             var dt_shorthands = #{Vm::TYPE_SHORTHANDS.invert.to_json};
             $('.memory table a.allocated').popover({
               placement: "top",
@@ -196,7 +245,7 @@ class VmHost
         end
 
         bytes_left -= 1
-        s << hex(b)
+        s << %(<span class="address_#{address}">) << hex(b) << %(</span>)
 
         if bytes_left == 0 || bytes_left > 0 && i == cols-1
           s << "</a>"

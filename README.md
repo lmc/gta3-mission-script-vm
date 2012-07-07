@@ -7,7 +7,9 @@ This is a really dumb project because nothing's going to happen without the rest
 
 Rack frontend
 
-![Rack frontend](http://i.imgur.com/8XbZj.png)
+Addresses as arguments highlight their values in the memory editor.
+
+![Rack frontend](http://i.imgur.com/nDb7p.png)
 
 
 Colour screenshot of it running, you can see it highlighting symbols in the bytecode.
