@@ -278,7 +278,7 @@ class Vm
     self.thread_names[self.thread_id]
   end
 
-  protected
+  #protected
 
   # for initializing "objects" like players/actors/etc.
   # in the real game, we would normally be writing a pointer to a native game object

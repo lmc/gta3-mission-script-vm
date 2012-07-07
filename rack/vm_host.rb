@@ -1,4 +1,5 @@
 # encoding: UTF-8
+require "json"
 
 class VmHost
   def initialize(vm)
@@ -32,15 +33,6 @@ class VmHost
       <<-HTML
         <div class="row">
 
-          <div class="span3 well current_instruction">
-            <h2>Current instruction</h2>
-            <span class="opcode">#{hex(@vm.opcode)}</span>
-            #{@vm.args.map {|(data_type,value)| %(
-              <span class="data_type">#{hex(data_type)}</span>
-              <span class="value">#{hex(value)}</span>
-            )}.join("\n")}
-          </div>
-
           <div class="span2 well threads">
             <h2>Threads</h2>
             <table>
@@ -64,6 +56,15 @@ class VmHost
               )}.join("\n")}
               </tbody>
             </table>
+          </div>
+
+          <div class="span3 well current_instruction">
+            <h2>Current instruction</h2>
+            <span class="opcode">#{hex(@vm.opcode)}</span>
+            #{@vm.args.map {|(data_type,value)| %(
+              <span class="data_type">#{hex(data_type)}</span>
+              <span class="value">#{hex(value)}</span>
+            )}.join("\n")}
           </div>
 
           <div class="span6 well memory">
@@ -90,6 +91,9 @@ class VmHost
           <link href="http://twitter.github.com/bootstrap/assets/css/bootstrap-responsive.css" rel="stylesheet">
           <link href="http://twitter.github.com/bootstrap/assets/css/docs.css" rel="stylesheet">
           <link href="http://twitter.github.com/bootstrap/assets/js/google-code-prettify/prettify.css" rel="stylesheet">
+          <script type="text/javascript" src="http://twitter.github.com/bootstrap/assets/js/jquery.js"></script>
+          <script type="text/javascript" src="http://twitter.github.com/bootstrap/assets/js/bootstrap-tooltip.js"></script>
+          <script type="text/javascript" src="http://twitter.github.com/bootstrap/assets/js/bootstrap-popover.js"></script>
 
           <style>
             .opcode    { color: #5BB75B; }
@@ -146,6 +150,22 @@ class VmHost
             scm
           </div>
 
+          <script>
+            var dt_shorthands = #{Vm::TYPE_SHORTHANDS.invert.to_json};
+            $('.memory table a.allocated').popover({
+              placement: "top",
+              title: function(){ return $(this).data("native"); },
+              content: function(){
+                $this = $(this);
+                var data_type = $this.data("data_type");
+                var s = "";
+                  s += "<dl>";
+                  s += "<dt>Data type</dt><dd>"+data_type+" "+dt_shorthands[data_type]+"</dd>";
+                return s;
+              }
+            });
+          </script>
+
         </body>
       </html>
 
@@ -158,8 +178,6 @@ class VmHost
     bytes_left = -1
     empty_row = Array.new(cols,0)
     @vm.memory[start_at...end_at].each_slice(cols).each_with_index do |row,index|
-      puts row.inspect
-      puts empty_row.inspect
       next if skip_empties && row == empty_row
       row_address = start_at + (index * cols)
       mem_hex = row.map.each_with_index{ |b,i|
@@ -167,8 +185,11 @@ class VmHost
         address = row_address + i
 
         if @vm.allocations[address]
-          tag_open = %(<a class="allocated address_#{address} data_type_#{@vm.allocations[address][0]} allocation_id_#{@vm.allocations[address][1]}" href="#">)
           bytes_left = Vm::TYPE_SIZES[ @vm.allocations[address][0] ]
+          classes = "allocated address_#{address} data_type_#{@vm.allocations[address][0]} allocation_id_#{@vm.allocations[address][1]}"
+          bytes = @vm.read(address,bytes_left)
+          native = @vm.arg_to_native(@vm.allocations[address][0],bytes)
+          tag_open = %(<a class="#{classes}" href="#" data-native="#{native}" data-bytes="#{hex(bytes)}" data-data_type="#{@vm.allocations[address][0]}" data-allocation_id="#{@vm.allocations[address][1]}">)
           s << tag_open
         elsif i == 0 && bytes_left > 0
           s << tag_open
@@ -215,7 +236,6 @@ class VmHost
           <dd>#{"%.6f" % @template_time} sec</dd>
           <dt>Ticks</dt>
           <dd>#{"%.6f" % (@last_tick_times.inject(:+) / @last_tick_times.size.to_f)} sec avg, x #{@last_tick_times.size}</dd>
-
         </dl>
       </div>
     HTML

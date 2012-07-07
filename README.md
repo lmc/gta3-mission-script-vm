@@ -7,7 +7,7 @@ This is a really dumb project because nothing's going to happen without the rest
 
 Rack frontend
 
-![Rack frontend](http://i.imgur.com/JK3WD.png)
+![Rack frontend](http://i.imgur.com/8XbZj.png)
 
 
 Colour screenshot of it running, you can see it highlighting symbols in the bytecode.
