@@ -68,7 +68,7 @@ class VmHost
 
           <div class="span6 well memory">
             <h2>Memory</h2>
-            #{memory_view(20,8,43808)}
+            #{memory_view(20,8,43808,true)}
           </div>
         </div>
       HTML
@@ -92,11 +92,17 @@ class VmHost
           <link href="http://twitter.github.com/bootstrap/assets/js/google-code-prettify/prettify.css" rel="stylesheet">
 
           <style>
-            .opcode    { color: #99ff6f; }
-            .data_type { color: #ff6ffd; }
-            .value     { color: #9ed5ff; }
+            .opcode    { color: #5BB75B; }
+            .data_type { color: #49AFCD; }
+            .value     { color: #0074CC; }
 
+            .memory table { font-family: monospace; }
             .memory .address { width: 3em; text-align: right; padding-right: 1em; }
+            .memory .allocated   { text-decoration: underline; }
+            .memory .data_type_1 { color: #0074CC; }
+            .memory .data_type_2 { color: #5BB75B; }
+            .memory .data_type_4 { color: #0074CC; }
+            .memory .data_type_6 { color: #FAA732; }
 
             .threads tr { color: #888; }
             .threads tr.current { color: #333; }
@@ -146,14 +152,41 @@ class VmHost
     HTML
   end
 
-  def memory_view(cols = 32,start_at = 8,end_at = 43808)
+  def memory_view(cols = 32,start_at = 8,end_at = 43808,skip_empties = false)
     str = "<table><tbody>"
+    tag_open = ""
+    bytes_left = -1
+    empty_row = Array.new(cols,0)
     @vm.memory[start_at...end_at].each_slice(cols).each_with_index do |row,index|
-      address = start_at + (index * cols)
+      puts row.inspect
+      puts empty_row.inspect
+      next if skip_empties && row == empty_row
+      row_address = start_at + (index * cols)
+      mem_hex = row.map.each_with_index{ |b,i|
+        s = ""
+        address = row_address + i
+
+        if @vm.allocations[address]
+          tag_open = %(<a class="allocated address_#{address} data_type_#{@vm.allocations[address][0]} allocation_id_#{@vm.allocations[address][1]}" href="#">)
+          bytes_left = Vm::TYPE_SIZES[ @vm.allocations[address][0] ]
+          s << tag_open
+        elsif i == 0 && bytes_left > 0
+          s << tag_open
+        end
+
+        bytes_left -= 1
+        s << hex(b)
+
+        if bytes_left == 0 || bytes_left > 0 && i == cols-1
+          s << "</a>"
+        end
+
+        s << " "
+      }.join('')
       str << %(
         <tr>
-          <td class="address">#{address}</td>
-          <td>#{hex(row)}</td>
+          <td class="address">#{row_address}</td>
+          <td>#{mem_hex}</td>
         </tr>
       )
     end
@@ -178,8 +211,6 @@ class VmHost
         <dl>
           <dt>Process memory</dt>
           <dd>#{@total_memory}kb</dd>
-          <dt>Tick memory delta</dt>
-          <dd>#{@total_memory - @original_memory}kb</dd>
           <dt>Template</dt>
           <dd>#{"%.6f" % @template_time} sec</dd>
           <dt>Ticks</dt>
