@@ -57,6 +57,7 @@ class Vm
   attr_accessor :pc # 0
   attr_accessor :stack # []
 
+  attr_accessor :original_opcode
   attr_accessor :opcode
   attr_accessor :args
 
@@ -66,6 +67,7 @@ class Vm
   attr_accessor :thread_suspended
   attr_accessor :thread_switch_to_id
 
+  attr_accessor :negated_opcode
   attr_accessor :branch_conditions
 
   attr_accessor :missions
@@ -84,6 +86,7 @@ class Vm
 
   DATA_TYPE_MAX = 31
   VARIABLE_STORAGE_AT = 8
+  NEGATED_OPCODE_MASK = 0x80
 
   def self.load_scm(scm = "main")
     new( File.read("#{`pwd`.strip}/#{scm}.scm") )
@@ -155,26 +158,32 @@ class Vm
   def tick!
     mem_width = 32#40
 
+    self.negated_opcode = false
     self.pc = self.thread_pcs[self.thread_id]
-    opcode_start_address = self.pc
-    self.opcode, self.args = read!(2), []
-    raise InvalidOpcode, "#{opcode_nice} not implemented" unless Opcodes.definitions[opcode]
 
-    # TODO: Conditional opcodes
+    opcode_start_address = self.pc
+
+    self.opcode, self.args = read!(2), []
+    self.original_opcode = self.opcode.dup
+
     # Conditional opcodes can have the highest bit of the opcode set to 1
     # So they look like 8038 instead of 0038
     # This is basically a NOT version of the normal opcode
     # We should detect this here, set a flag to say the next write_branch_condition call
     # should be negated, and remove the high bit on the opcode so it calls the "plain" opcode
-    # the write_branch_condition flag should be reset after the opcode is executed
+    if self.opcode[1] >= NEGATED_OPCODE_MASK
+      self.opcode[1] -= NEGATED_OPCODE_MASK
+      self.negated_opcode = true
+    end
 
-    #self.args = Opcodes.definitions[opcode][:args_names].map { read_arg! }
+    raise InvalidOpcode, "#{opcode_nice} not implemented" unless Opcodes.definitions[opcode]
+
     self.args = read_args!
 
     opcode_prelude = 4
     shim_size = (0)...([opcode,args].flatten.compact.size)
-    shim = "#{ch(OPCODE,opcode)} #{self.args.map{|a| "#{ch(TYPE,a[0])} #{a[1] ? ch(VALUE,a[1]) : '00'}" }.join(" ")}"
-    puts " thread #{self.thread_id.to_s.rjust(2," ")} @ #{opcode_start_address.to_s.rjust(8,"0")} v (threadname:#{(self.thread_names[self.thread_id] || "-")} branch_conditions:#{self.branch_conditions.inspect})"
+    shim = "#{ch(OPCODE,original_opcode)} #{self.args.map{|a| "#{ch(TYPE,a[0])} #{a[1] ? ch(VALUE,a[1]) : '00'}" }.join(" ")}"
+    puts " thread #{self.thread_id.to_s.rjust(2," ")} @ #{opcode_start_address.to_s.rjust(8,"0")} v (threadname:#{(self.thread_names[self.thread_id] || "-")} branch_conditions:#{self.branch_conditions.inspect} negated_opcode:#{self.negated_opcode.inspect})"
     puts dump_memory_at(opcode_start_address,mem_width,opcode_prelude,shim_size,shim)
 
     execute!
@@ -183,6 +192,7 @@ class Vm
     rows.times do |index|
       puts dump_memory_at(VARIABLE_STORAGE_AT+(index*width),width)
     end
+    puts dump_memory_at(3530,32)
 
     self.thread_pcs[self.thread_id] = self.pc
     if self.thread_suspended
@@ -356,6 +366,7 @@ class Vm
     raise InvalidBranchConditionState, "called conditional opcode outside of if structure" if self.branch_conditions.nil?
     next_insert = self.branch_conditions.index(nil)
     raise InvalidBranchConditionState, "too many conditional opcodes (allocated: #{self.branch_conditions.size}" if next_insert >= self.branch_conditions.size
+    bool = !bool if self.negated_opcode
     self.branch_conditions[next_insert] = bool
   end
 

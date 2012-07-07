@@ -124,6 +124,12 @@ module Opcodes
     allocate!(args.ret_address,args.value_type,args.value)
   end
 
+  opcode("0008", "add_set_global_int", ret_address:pg_if, value:int ) do |args|
+    gv_value = arg_to_native(:int32,read(args.ret_address,4))
+    gv_value += args.value 
+    allocate!(args.ret_address,:int32,gv_value)
+  end
+
   opcode("0213", "pickup_create", model:int, flags:int, x:float, y:float, z:float, ret_pickup_id:pg_if ) do |args|
     # TODO: do something with pickup
     # flags documented at: http://gtag.gtagaming.com/opcode-database.php?opcode=0213
@@ -219,6 +225,12 @@ module Opcodes
   opcode("0038", "if_gv_eq_int", gv_address:pg_if, int:int ) do |args|
     value_at_gv = arg_to_native(:int32,read(args.gv_address,4))
     write_branch_condition!( value_at_gv == args.int )
+  end
+
+  opcode("002C", "if_gv_int_gte_gv_int", gv_address_1:pg_if, gv_address_2:pg_if ) do |args|
+    value_at_gv1 = arg_to_native(:int32,read(args.gv_address_1,4))
+    value_at_gv2 = arg_to_native(:int32,read(args.gv_address_2,4))
+    write_branch_condition!( value_at_gv1 >= value_at_gv2 )
   end
 
 

@@ -9,11 +9,13 @@ class VmHost
 
   def tick(ticks = 1)
     @last_exception = nil
+    @original_memory = `ps -o rss= -p #{Process.pid}`.to_i 
     ticks.times do
       @last_tick_times << Benchmark.measure do
         @vm.tick!
       end.real
     end
+    @total_memory = `ps -o rss= -p #{Process.pid}`.to_i
   rescue => ex
     @last_exception = ex
   end
@@ -30,7 +32,7 @@ class VmHost
       <<-HTML
         <div class="row">
 
-          <div class="span3 current_instruction">
+          <div class="span3 well current_instruction">
             <h2>Current instruction</h2>
             <span class="opcode">#{hex(@vm.opcode)}</span>
             #{@vm.args.map {|(data_type,value)| %(
@@ -39,7 +41,7 @@ class VmHost
             )}.join("\n")}
           </div>
 
-          <div class="span2 threads">
+          <div class="span2 well threads">
             <h2>Threads</h2>
             <table>
               <thead>
@@ -64,7 +66,7 @@ class VmHost
             </table>
           </div>
 
-          <div class="span6 memory">
+          <div class="span6 well memory">
             <h2>Memory</h2>
             #{memory_view(20,8,43808)}
           </div>
@@ -75,7 +77,7 @@ class VmHost
 
   def template(&block)
     template_value = ""
-    template_time = Benchmark.measure { template_value = yield }.real
+    @template_time = Benchmark.measure { template_value = yield }.real
     <<-HTML
       <!DOCTYPE html>
       <html lang="en">
@@ -127,11 +129,8 @@ class VmHost
             <form action="/reset" method="get" class="form-inline well span1">
               <button type="submit" class="btn btn-danger">Reset</button>
             </form>
+            #{process_stats_view}
           </div>
-
-          <div>Template: #{"%.6f" % template_time} sec</div>
-          <div>Ticks: #{@last_tick_times.size}, Average: #{"%.6f" % (@last_tick_times.inject(:+) / @last_tick_times.size.to_f)} sec</div>
-          <div>#{@last_tick_times.inspect}</div>
 
           #{last_exception_view if @last_exception}
 
@@ -169,6 +168,24 @@ class VmHost
         <h1>#{@last_exception.class.name}</h1>
         <h2>#{@last_exception.message}</h2>
         <div class="backtrace">#{cleaned_backtrace.join("<br />\n")}</div>
+      </div>
+    HTML
+  end
+
+  def process_stats_view
+    <<-HTML
+      <div class="well span2">
+        <dl>
+          <dt>Process memory</dt>
+          <dd>#{@total_memory}kb</dd>
+          <dt>Tick memory delta</dt>
+          <dd>#{@total_memory - @original_memory}kb</dd>
+          <dt>Template</dt>
+          <dd>#{"%.6f" % @template_time} sec</dd>
+          <dt>Ticks</dt>
+          <dd>#{"%.6f" % (@last_tick_times.inject(:+) / @last_tick_times.size.to_f)} sec avg, x #{@last_tick_times.size}</dd>
+
+        </dl>
       </div>
     HTML
   end
