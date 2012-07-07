@@ -153,12 +153,20 @@ class Vm
   end
 
   def tick!
-    mem_width = 48#40
+    mem_width = 32#40
 
     self.pc = self.thread_pcs[self.thread_id]
     opcode_start_address = self.pc
     self.opcode, self.args = read!(2), []
     raise InvalidOpcode, "#{opcode_nice} not implemented" unless Opcodes.definitions[opcode]
+
+    # TODO: Conditional opcodes
+    # Conditional opcodes can have the highest bit of the opcode set to 1
+    # So they look like 8038 instead of 0038
+    # This is basically a NOT version of the normal opcode
+    # We should detect this here, set a flag to say the next write_branch_condition call
+    # should be negated, and remove the high bit on the opcode so it calls the "plain" opcode
+    # the write_branch_condition flag should be reset after the opcode is executed
 
     #self.args = Opcodes.definitions[opcode][:args_names].map { read_arg! }
     self.args = read_args!
@@ -204,7 +212,7 @@ class Vm
     puts "Backtrace:"
     puts ex.backtrace.reject{ |l| l =~ %r{(irb_binding)|(bin/irb:)|(ruby/1.9.1/irb)} }.join("\n")
     puts
-    false
+    raise ex
   end
 
   def execute!
