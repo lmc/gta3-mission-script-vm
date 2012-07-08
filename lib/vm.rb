@@ -45,7 +45,10 @@ COLORS = {
 }
 DEFAULT_COLOR = "7"
 
-load "lib/player.rb"
+load "lib/game_objects/player.rb"
+load "lib/game_objects/actor.rb"
+load "lib/game_objects/pickup.rb"
+load "lib/game_objects/cargen.rb"
 load "lib/opcode_dsl.rb"
 load "lib/opcodes.rb"
 
@@ -78,11 +81,7 @@ class Vm
   attr_accessor :allocations, :allocation_ids
 
   attr_accessor :onmission_address
-
-
-  attr_accessor :players
-  attr_accessor :actors
-  attr_accessor :pickups
+  attr_accessor :game_objects
 
   DATA_TYPE_MAX = 31
   VARIABLE_STORAGE_AT = 8
@@ -107,9 +106,7 @@ class Vm
     self.allocations = {} # address => [pointer_type,id]
     self.allocation_ids = Hash.new { |h,k| h[k] = 0 }
 
-    self.players = {}
-    self.actors = {}
-    self.pickups = {}
+    self.game_objects = {}
   end
 
   def run
@@ -287,18 +284,20 @@ class Vm
   def allocate!(address,data_type,value = nil)
     data_type = TYPE_SHORTHANDS[data_type] if data_type.is_a?(Symbol)
     size = TYPE_SIZES[data_type]
+    klass = nil
     raise ArgumentError, "address is nil" unless address
     raise ArgumentError, "data_type is nil" unless data_type
 
-    to_write = if value
+    to_write = if !value.is_a?(Class)
       allocation_id = nil # immediate value
       native_to_arg_value(data_type,value)
     else
+      klass = value
       allocation_id = self.allocation_ids[data_type] += 1
       [allocation_id].pack("l<").bytes.to_a
     end
 
-    self.allocations[address] = [data_type,allocation_id]
+    self.allocations[address] = [data_type,allocation_id,klass]
     # puts "  #{address} - #{self.allocations[address].inspect}"
     # puts "  #{[address,size,to_write].inspect}"
 

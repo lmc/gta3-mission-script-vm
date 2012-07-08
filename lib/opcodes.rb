@@ -55,13 +55,13 @@ module Opcodes
   end
 
   opcode("0053", "player_create", model:int, x:float, y:float, z:float, ret_player_id:pg_if ) do |args|
-    self.players[args.ret_player_id] = Player.new(
+    self.game_objects[args.ret_player_id] = Player.new(
       :model => args.model,
       :x => args.x,
       :y => args.y,
       :z => args.z,
     )
-    allocate!(args.ret_player_id,:pg_if)
+    allocate!(args.ret_player_id,:pg_if,Player)
   end
 
   opcode("06CF", "noop", noop:int ) do |args|
@@ -82,14 +82,13 @@ module Opcodes
   end
 
   opcode("07AF", "player_get_pedgroup", player_id:pg_if, ret_player_group:pg_if ) do |args|
-    pedgroup = self.players[args.player_id].pedgroup ||= 126126
+    pedgroup = self.game_objects[args.player_id].pedgroup ||= 126126
     allocate!(args.ret_player_group,:int32,pedgroup)
   end
 
   opcode("01F5", "player_get_actor", player_id:pg_if, ret_player_actor_id:pg_if ) do |args|
-    pedgroup = self.players[args.player_id].pedgroup ||= 126126
-    # TODO: write to actors
-    allocate!(args.ret_player_actor_id,:pg_if)
+    self.game_objects[args.ret_player_actor_id] = Actor.new
+    allocate!(args.ret_player_actor_id,:pg_if,Actor)
   end
 
   opcode("0373", "camera_position_angle_behind_player" ) do |args|
@@ -133,12 +132,12 @@ module Opcodes
   opcode("0213", "pickup_create", model:int, flags:int, x:float, y:float, z:float, ret_pickup_id:pg_if ) do |args|
     # TODO: do something with pickup
     # flags documented at: http://gtag.gtagaming.com/opcode-database.php?opcode=0213
-    allocate!(args.ret_pickup_id,:pg_if)
+    allocate!(args.ret_pickup_id,:pg_if,Pickup)
   end
 
   opcode("0180", "engine_bind_onmission_var", ret_address:pg_if ) do |args|
     self.onmission_address = args.ret_address
-    allocate!(args.ret_address,:pg_if)
+    allocate!(args.ret_address,:int32,0)
   end
 
   opcode("01E8", "paths_disable_in_cube", x1:float, y1:float, z1:float, x2:float, y2:float, z2:float ) do |args|
@@ -148,7 +147,7 @@ module Opcodes
   opcode("014B", "cargen_create", x:float, y:float, z:float, rz:float, model:int, color1:int, color2:int,
     force_spawn:bool, alarm_pc:int, locked_pc:int, delay_min:int, delay_max:int, ret_cargen_id:pg_if ) do |args|
     # TODO: do something with this
-    allocate!(args.ret_cargen_id,:pg_if)
+    allocate!(args.ret_cargen_id,:pg_if,Cargen)
   end
 
   opcode("014C", "cargen_set_ttl", cargen_id:pg_if, ttl:int ) do |args|

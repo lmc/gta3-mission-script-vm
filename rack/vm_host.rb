@@ -28,13 +28,23 @@ class VmHost
     }] ]
   end
 
+  def format_arg(data_type,value)
+    if data_type == 0x00
+      "[end of args]"
+    else
+      @vm.arg_to_native(data_type,value).inspect
+    end
+  rescue
+    CGI.escape_html(value.inspect)
+  end
+
   def render_main_body
     template do
       <<-HTML
         <div class="row">
           <div class="span12 well current_instruction">
             <h2>Current instruction</h2>
-            <table>
+            <table class="table table-bordered table-condensed">
               <tr>
                 <td class="opcode"><span class="opcode">#{hex(@vm.opcode)}</span></td>
                 #{@vm.args.map {|(data_type,value)| %(
@@ -45,17 +55,17 @@ class VmHost
                 )}.join("\n")}
               </tr>
               <tr>
-                <td class="opcode">#{Opcodes.definitions[@vm.opcode][:sym_name]}</td>
+                <td class="opcode">#{Opcodes.definitions[@vm.opcode][:sym_name] rescue "--"}</td>
                 #{@vm.args.map {|(data_type,value)|
                 attrs = ""
-                value = @vm.arg_to_native(data_type,value)
+                value = format_arg(data_type,value)
                 if data_type == TYPE_SHORTHANDS[:pg_if]
                   attrs << %(href="#" data-address="#{value}")
                 end
                 %(
                   <td>
                     <a #{attrs}>
-                      #{value.inspect}
+                      #{value}
                     </a>
                   </td>
                 )}.join("\n")}
@@ -90,9 +100,30 @@ class VmHost
             </table>
           </div>
 
-          <div class="span10 well memory">
+          <div class="span5 well memory">
             <h2>Memory</h2>
-            #{memory_view(36,8,43808,true)}
+            #{memory_view(16,8,43808,true)}
+          </div>
+
+          <div class="span5 well game_objects">
+            <h2>Game Objects</h2>
+            <table class="table table-condensed table-bordered">
+              <tr>
+                <th>VM Addr</th>
+                <th>VM ID</th>
+                <th>Object</th>
+              </tr>
+              #{@vm.game_objects.each_pair.map { |address,object|
+                alloc_data = @vm.allocations[address]
+                %(
+                  <tr class="meta game_object_#{alloc_data[1]}">
+                    <td class="address">#{address}</td>
+                    <td class="allocation_id">#{alloc_data[1]}</td>
+                    <td class="allocated_as">#{alloc_data[2].name} #{alloc_data[1]}</td>
+                  </tr>
+                )
+              }.join("\n")}
+            </table>
           </div>
         </div>
       HTML
@@ -112,7 +143,6 @@ class VmHost
           <!-- Le styles -->
           <link href="http://twitter.github.com/bootstrap/assets/css/bootstrap.css" rel="stylesheet">
           <link href="http://twitter.github.com/bootstrap/assets/css/bootstrap-responsive.css" rel="stylesheet">
-          <link href="http://twitter.github.com/bootstrap/assets/css/docs.css" rel="stylesheet">
           <link href="http://twitter.github.com/bootstrap/assets/js/google-code-prettify/prettify.css" rel="stylesheet">
           <script type="text/javascript" src="http://twitter.github.com/bootstrap/assets/js/jquery.js"></script>
           <script type="text/javascript" src="http://twitter.github.com/bootstrap/assets/js/bootstrap-tooltip.js"></script>
@@ -124,10 +154,11 @@ class VmHost
             span.data_type { color: #49AFCD; }
             span.value     { color: #0074CC; }
 
+            .current_instruction table { width: auto; }
             .current_instruction td { font-family: monospace; padding-left: 1em; }
             .current_instruction td.opcode { width: 10em; text-align: right; }
 
-            .memory table tbody { font-family: monospace; display: block; height: 30em; overflow-y: scroll; }
+            .memory table tbody { font-family: monospace; display: block; height: 20em; overflow-y: scroll; }
             .memory .address { width: 3em; text-align: right; padding-right: 1em; }
             .memory .allocated   { text-decoration: underline; }
             .memory .data_type_1 { color: #0074CC; }
@@ -140,23 +171,13 @@ class VmHost
             .threads .name { width: 3em; text-align: right; padding-right: 1em;  }
             .threads .id { width: 1em; text-align: left;  padding-right: 1em; }
             .threads .pc {  }
+
+            .game_objects td.address { width: 5em; text-align: right; }
+            .game_objects td.allocation_id { width: 3em; }
           </style>
         </head>
 
         <body>
-
-          <div class="navbar navbar-fixed-top">
-            <div class="navbar-inner">
-              <div class="container">
-                <a class="brand" href="./index.html">gta3-mission-script-vm</a>
-                <div class="nav-collapse collapse">
-                  <ul class="nav">
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </div>
-
           <div class="row">
             <form action="/tick" method="get" class="form-inline well span3">
               <label>Number of ticks</label>
@@ -210,6 +231,10 @@ class VmHost
                 var s = "";
                   s += "<dl>";
                   s += "<dt>Data type</dt><dd>"+data_type+" "+dt_shorthands[data_type]+"</dd>";
+                  if($this.data("allocation_id")){
+                    s += "<dt>Game object</dt><dd>"+$this.data("allocation_id")+"</dd>";
+                  }
+                  s += "</dl>";
                 return s;
               }
             });

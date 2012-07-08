@@ -1,0 +1,3 @@
+class Cargen < OpenStruct
+
+end

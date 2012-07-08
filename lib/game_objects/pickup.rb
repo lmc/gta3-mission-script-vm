@@ -1,0 +1,3 @@
+class Pickup < OpenStruct
+
+end
