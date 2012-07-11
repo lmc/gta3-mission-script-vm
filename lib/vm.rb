@@ -92,7 +92,8 @@ class Vm
   end
 
   def initialize(script_binary)
-    self.memory = script_binary.bytes.to_a
+    self.memory = Memory.new(script_binary)
+    #self.memory = script_binary.bytes.to_a
     self.pc = 0
     self.stack = []
 
@@ -449,6 +450,22 @@ class Vm
   class InvalidDataType < StandardError; end
 
   class InvalidBranchConditionState < StandardError; end
+end
+
+class Memory < String
+  def initialize(*args)
+    super(*args)
+    self.force_encoding("ASCII-8BIT")
+  end
+
+  def [](args = nil)
+    super.bytes.to_a
+  end
+
+  def []=(pos,args)
+    args = args.to_byte_string if args.is_a?(Array) && args[0].is_a?(Numeric)
+    super(pos,args)
+  end
 end
 
 class String
