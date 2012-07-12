@@ -22,6 +22,10 @@ class GameObject < OpenStruct
     defaults.merge(attributes)
   end
 
+  def to_hash
+    @table.dup
+  end
+
   def self.float; :float; end
   def self.int;   :int;   end
   def self.bool;  :bool;  end

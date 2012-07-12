@@ -84,6 +84,12 @@ class Vm
   attr_accessor :onmission_address
   attr_accessor :game_objects
 
+  attr_accessor :scm_structures
+
+  attr_accessor :opcode_map
+
+  attr_accessor :dirty
+
   DATA_TYPE_MAX = 31
   VARIABLE_STORAGE_AT = 8
   NEGATED_OPCODE_MASK = 0x80
@@ -109,6 +115,11 @@ class Vm
     self.allocation_ids = Hash.new { |h,k| h[k] = 0 }
 
     self.game_objects = {}
+
+    self.dirty = Hash.new { |h,k| h[k] = false }
+
+    detect_scm_structures!
+    build_opcode_map!
   end
 
   def run
@@ -437,6 +448,23 @@ class Vm
     if !validate_arg(expected_arg_type,arg_type)
       raise InvalidOpcodeArgumentType, "expected #{arg_type.inspect} = #{expected_arg_type.inspect} (#{opcode} @ #{arg_index})"
     end
+  end
+
+  def detect_scm_structures!
+    
+  end
+
+  def build_opcode_map!
+    # For disassembly purposes, we need to know where an opcode begins
+    # ignoring the special structures at the start of the SCM (memory, object table, mission table, etc.)
+    # starting from the first opcode, record it's start address, fast-forward through the size of it's args to find the next opcode, repeat
+    # will need to know arg counts for all opcodes, and size of all datatypes, with special handling for var_args
+  end
+
+  def start_of_opcode_at(address)
+    map_index = self.opcode_map.size
+    map_index -= 1 until self.opcode_map[map_index] >= address
+    self.opcode_map[map_index]
   end
 
 

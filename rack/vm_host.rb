@@ -21,7 +21,13 @@ class VmHost
     @last_exception = ex
   end
 
+  # record dirty state of VM
+  # threads (always)
+  # memory (detect write calls)
+  # game objects (maybe? state on vm, seperate state on vmhost?)
+  # map? (same as game objects?)
   def render_main
+    @total_memory = `ps -o rss= -p #{Process.pid}`.to_i
     @last_tick_times = [-1] if @last_tick_times.size == 0
     [ 200, {'Content-Type' => 'text/html'}, [render_main_body {
       
@@ -35,40 +41,44 @@ class VmHost
       @vm.arg_to_native(data_type,value).inspect
     end
   rescue
-    CGI.escape_html(value.inspect)
+    h(value.inspect)
+  end
+
+  def h(str)
+    CGI.escape_html(str)
   end
 
   def render_main_body
     template do
       <<-HTML
-        <div class="row">
-          <div class="span12 well current_instruction">
+          <!-- open div class=row above -->
+          <div class="span10 well current_instruction">
             <h2>Current instruction</h2>
             <table class="table table-bordered table-condensed">
               <tr>
                 <td class="opcode"><span class="opcode">#{hex(@vm.opcode)}</span></td>
-                #{@vm.args.map {|(data_type,value)| %(
+                #{@vm.args.inject("") {|str,(data_type,value)| str << %(
                   <td>
                     <span class="data_type">#{hex(data_type)}</span>
                     <span class="value">#{hex(value)}</span>
                   </td>
-                )}.join("\n")}
+                )}}
               </tr>
               <tr>
                 <td class="opcode">#{Opcodes.definitions[@vm.opcode][:sym_name] rescue "--"}</td>
-                #{@vm.args.map {|(data_type,value)|
+                #{@vm.args.inject("") {|str,(data_type,value)|
                 attrs = ""
                 value = format_arg(data_type,value)
                 if data_type == TYPE_SHORTHANDS[:pg_if]
                   attrs << %(href="#" data-address="#{value}")
                 end
-                %(
+                str << %(
                   <td>
                     <a #{attrs}>
                       #{value}
                     </a>
                   </td>
-                )}.join("\n")}
+                )}}
               </tr>
             </table>
           </div>
@@ -112,17 +122,19 @@ class VmHost
                 <th>VM Addr</th>
                 <th>VM ID</th>
                 <th>Object</th>
+                <th></th>
               </tr>
-              #{@vm.game_objects.each_pair.map { |address,object|
+              #{@vm.game_objects.each_pair.inject("") { |str,(address,object)|
                 alloc_data = @vm.allocations[address]
-                %(
+                str << %(
                   <tr class="meta game_object_#{alloc_data[1]}">
                     <td class="address">#{address}</td>
                     <td class="allocation_id">#{alloc_data[1]}</td>
                     <td class="allocated_as">#{alloc_data[2].name} #{alloc_data[1]}</td>
+                    <td class="inspect">#{h object.inspect}</td>
                   </tr>
                 )
-              }.join("\n")}
+              }}
             </table>
           </div>
         </div>
@@ -150,6 +162,8 @@ class VmHost
           <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.18/jquery-ui.min.js"></script>
 
           <style>
+            body { zoom: 0.5; }
+
             span.opcode    { color: #5BB75B; }
             span.data_type { color: #49AFCD; }
             span.value     { color: #0074CC; }
@@ -191,11 +205,9 @@ class VmHost
 
           #{last_exception_view if @last_exception}
 
-          #{template_value}
-
           <div class="row">
             #{process_stats_view}
-          </div>
+          #{template_value}
 
           <div class="row footer">
             scm

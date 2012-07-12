@@ -5,6 +5,8 @@ require 'benchmark'
 #use Rack::Reloader, 0
 use Rack::ContentLength
 
+should_reload = true
+
 def reload!(vm)
   load "./rack/vm_host.rb"
   VmHost.new(vm)
@@ -13,8 +15,10 @@ end
 @vm = Vm.load_scm("main")
 @vm.tick!
 
+@vm_host = reload!(@vm)
+
 app = proc do |env|
-  @vm_host = reload!(@vm)
+  @vm_host = reload!(@vm) if should_reload
   case env["REQUEST_URI"]
   when %r{/\A/disassembly/(\d+)/(\d+)}
     #TODO: refactor VM so we can easily get disassembly around a specific address (cache? vanilla script doesn't do self-modifying code)
@@ -30,6 +34,7 @@ app = proc do |env|
   when %r{\A/reset}
     @vm = Vm.load_scm("main")
     @vm.tick!
+    @vm_host = VmHost.new(@vm)
     @vm_host.render_main
   when %r{\A/\Z}
     @vm_host.render_main
