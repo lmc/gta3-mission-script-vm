@@ -87,8 +87,9 @@ module Opcodes
   end
 
   opcode("01F5", "player_get_actor", player_id:pg_if, ret_player_actor_id:pg_if ) do |args|
-    self.game_objects[args.ret_player_actor_id] = Actor.new
-    allocate!(args.ret_player_actor_id,:pg_if,Actor)
+    #self.game_objects[args.ret_player_actor_id] = Actor.new
+    #allocate!(args.ret_player_actor_id,:pg_if,Actor)
+    allocate_game_object!(args.ret_player_actor_id,Actor)
   end
 
   opcode("0373", "camera_position_angle_behind_player" ) do |args|
@@ -119,7 +120,6 @@ module Opcodes
   end
 
   opcode("04AE", "set_global_int_or_float", ret_address:pg_if, value:int_or_float ) do |args|
-    puts [args.ret_address,args.value_type,args.value].inspect
     allocate!(args.ret_address,args.value_type,args.value)
   end
 
@@ -147,7 +147,10 @@ module Opcodes
   opcode("014B", "cargen_create", x:float, y:float, z:float, rz:float, model:int, color1:int, color2:int,
     force_spawn:bool, alarm_pc:int, locked_pc:int, delay_min:int, delay_max:int, ret_cargen_id:pg_if ) do |args|
     # TODO: do something with this
-    allocate!(args.ret_cargen_id,:pg_if,Cargen)
+    #allocate!(args.ret_cargen_id,:pg_if,Cargen)
+    allocate_game_object!(args.ret_cargen_id,Cargen) do |cargen|
+      cargen.assign_from_args(args,without: [:ret_cargen_id])
+    end
   end
 
   opcode("014C", "cargen_set_ttl", cargen_id:pg_if, ttl:int ) do |args|

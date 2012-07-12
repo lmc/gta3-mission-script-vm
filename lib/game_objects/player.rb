@@ -1,3 +1,5 @@
-class Player < OpenStruct
-
+class Player < GameObject
+  def self.attributes
+    {}
+  end
 end

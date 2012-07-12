@@ -45,6 +45,7 @@ COLORS = {
 }
 DEFAULT_COLOR = "7"
 
+load "lib/game_objects/game_object.rb"
 load "lib/game_objects/player.rb"
 load "lib/game_objects/actor.rb"
 load "lib/game_objects/pickup.rb"
@@ -240,14 +241,16 @@ class Vm
       end
     end
 
-    args_helper = OpenStruct.new
+    args_helper = OpcodeArgs.new
     native_args.each do |(name,type,native_value)|
       if native_value.is_a?(Array)
-        args_helper.send("var_args=",native_value.map{ |a| a[2] })
-        args_helper.send("var_args_type=",native_value.map{ |a| a[1] })
+        args_helper.add_arg("var_args",native_value.map{ |a| a[1] },native_value.map{ |a| a[2] })
+        #args_helper.send("var_args=",native_value.map{ |a| a[2] })
+        #args_helper.send("var_args_type=",native_value.map{ |a| a[1] })
       else
-        args_helper.send("#{name}=",native_value)
-        args_helper.send("#{name}_type=",type)
+        args_helper.add_arg(name,type,native_value)
+        #args_helper.send("#{name}=",native_value)
+        #args_helper.send("#{name}_type=",type)
       end
     end
 
@@ -277,6 +280,12 @@ class Vm
   end
 
   #protected
+
+  def allocate_game_object!(address,game_object_class,pointer_type = :pg_if,&block)
+    self.game_objects[address] = game_object_class.new
+    allocate!(address,pointer_type,game_object_class)
+    yield(self.game_objects[address]) if block_given?
+  end
 
   # for initializing "objects" like players/actors/etc.
   # in the real game, we would normally be writing a pointer to a native game object
@@ -465,6 +474,18 @@ class Memory < String
   def []=(pos,args)
     args = args.to_byte_string if args.is_a?(Array) && args[0].is_a?(Numeric)
     super(pos,args)
+  end
+end
+
+class OpcodeArgs < OpenStruct
+  def initialize(*args)
+    super
+    self.arg_names = []
+  end
+  def add_arg(arg_name,data_type,value)
+    self.arg_names << arg_name
+    send("#{arg_name}=",value)
+    send("#{arg_name}_type=",data_type)
   end
 end
 

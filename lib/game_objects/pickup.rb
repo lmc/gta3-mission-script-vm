@@ -1,3 +1,5 @@
-class Pickup < OpenStruct
-
+class Pickup < GameObject
+  def self.attributes
+    {}
+  end
 end
