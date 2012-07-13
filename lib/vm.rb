@@ -94,6 +94,8 @@ class Vm
   VARIABLE_STORAGE_AT = 8
   NEGATED_OPCODE_MASK = 0x80
 
+  DIRTY_STATES = [:threads,:memory,:game_objects,:map]
+
   def self.load_scm(scm = "main")
     new( File.read("#{`pwd`.strip}/#{scm}.scm") )
   end
@@ -116,7 +118,11 @@ class Vm
 
     self.game_objects = {}
 
-    self.dirty = Hash.new { |h,k| h[k] = false }
+    self.dirty = {}
+    # self.dirty[:threads]
+    # self.dirty[:memory]
+    # self.dirty[:game_objects]
+    # self.dirty[:map]
 
     detect_scm_structures!
     build_opcode_map!
@@ -166,6 +172,8 @@ class Vm
   end
 
   def tick!
+    reset_dirty_state
+    
     mem_width = 32#40
 
     self.negated_opcode = false
@@ -217,6 +225,9 @@ class Vm
       self.thread_id = self.thread_switch_to_id
       self.thread_switch_to_id = false
     end
+
+    self.dirty[:threads] = true
+    self.dirty[:game_objects] = self.game_objects.values.any?(&:dirty_check!)
 
     puts; true
   rescue => ex
@@ -327,6 +338,7 @@ class Vm
 
   def write!(address,bytes,byte_array)
     self.memory[(address)...(address+bytes)] = byte_array[0...bytes]
+    self.dirty[:memory] = true
   end
 
   def read(address,bytes = 1)
@@ -465,6 +477,11 @@ class Vm
     map_index = self.opcode_map.size
     map_index -= 1 until self.opcode_map[map_index] >= address
     self.opcode_map[map_index]
+  end
+
+
+  def reset_dirty_state
+    DIRTY_STATES.each { |state| self.dirty[state] = false }
   end
 
 

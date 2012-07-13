@@ -34,6 +34,113 @@ class VmHost
     }] ]
   end
 
+  def render_stats
+    <<-HTML
+      <div class="well span2">
+        <dl>
+          <dt>Process memory</dt>
+          <dd>#{@total_memory}kb</dd>
+          <dt>Template</dt>
+          <dd>#{"%.6f" % @template_time} sec</dd>
+          <dt>Ticks</dt>
+          <dd>#{"%.6f" % (@last_tick_times.inject(:+) / @last_tick_times.size.to_f)} sec avg, x #{@last_tick_times.size}</dd>
+        </dl>
+      </div>
+    HTML
+  end
+
+  def render_current_instruction
+    <<-HTML
+      <h2>Current instruction</h2>
+      <table class="table table-bordered table-condensed">
+        <tr>
+          <td class="opcode"><span class="opcode">#{hex(@vm.opcode)}</span></td>
+          #{@vm.args.inject("") {|str,(data_type,value)| str << %(
+            <td>
+              <span class="data_type">#{hex(data_type)}</span>
+              <span class="value">#{hex(value)}</span>
+            </td>
+          )}}
+        </tr>
+        <tr>
+          <td class="opcode">#{Opcodes.definitions[@vm.opcode][:sym_name] rescue "--"}</td>
+          #{@vm.args.inject("") {|str,(data_type,value)|
+          attrs = ""
+          value = format_arg(data_type,value)
+          if data_type == TYPE_SHORTHANDS[:pg_if]
+            attrs << %(href="#" data-address="#{value}")
+          end
+          str << %(
+            <td>
+              <a #{attrs}>
+                #{value}
+              </a>
+            </td>
+          )}}
+        </tr>
+      </table>
+    HTML
+  end
+
+  def render_threads
+    <<-HTML
+      <h2>Threads</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>ID</th>
+            <th>PC</th>
+          </tr>
+        </thead>
+        <tbody>
+        #{ @vm.thread_pcs.each_with_index.map { |thread_pc,thread_id|
+          classes = []
+          classes << "current" if thread_id == @vm.thread_id
+          %(
+          <tr class="#{classes.join(" ")}">
+            <td class="name">#{@vm.thread_names[thread_id]}</td>
+            <td class="id">#{thread_id}</td>
+            <td class="pc">#{thread_pc}</td>
+          </tr>
+        )}.join("\n")}
+        </tbody>
+      </table>
+    HTML
+  end
+
+  def render_memory
+    <<-HTML
+      <h2>Memory</h2>
+      #{memory_view(16,8,43808,true)}
+    HTML
+  end
+
+  def render_game_objects
+    <<-HTML
+      <h2>Game Objects</h2>
+      <table class="table table-condensed table-bordered">
+        <tr>
+          <th>Addr</th>
+          <th>ID</th>
+          <th>Object</th>
+          <th></th>
+        </tr>
+        #{@vm.game_objects.each_pair.inject("") { |str,(address,object)|
+          alloc_data = @vm.allocations[address]
+          str << %(
+            <tr class="meta game_object_#{alloc_data[1]}">
+              <td class="address">#{address}</td>
+              <td class="allocation_id">#{alloc_data[1]}</td>
+              <td class="allocated_as">#{alloc_data[2].name} #{alloc_data[1]}</td>
+              <td class="inspect">#{h object.inspect}</td>
+            </tr>
+          )
+        }}
+      </table>
+    HTML
+  end
+
   def format_arg(data_type,value)
     if data_type == 0x00
       "[end of args]"
@@ -53,89 +160,21 @@ class VmHost
       <<-HTML
           <!-- open div class=row above -->
           <div class="span10 well current_instruction">
-            <h2>Current instruction</h2>
-            <table class="table table-bordered table-condensed">
-              <tr>
-                <td class="opcode"><span class="opcode">#{hex(@vm.opcode)}</span></td>
-                #{@vm.args.inject("") {|str,(data_type,value)| str << %(
-                  <td>
-                    <span class="data_type">#{hex(data_type)}</span>
-                    <span class="value">#{hex(value)}</span>
-                  </td>
-                )}}
-              </tr>
-              <tr>
-                <td class="opcode">#{Opcodes.definitions[@vm.opcode][:sym_name] rescue "--"}</td>
-                #{@vm.args.inject("") {|str,(data_type,value)|
-                attrs = ""
-                value = format_arg(data_type,value)
-                if data_type == TYPE_SHORTHANDS[:pg_if]
-                  attrs << %(href="#" data-address="#{value}")
-                end
-                str << %(
-                  <td>
-                    <a #{attrs}>
-                      #{value}
-                    </a>
-                  </td>
-                )}}
-              </tr>
-            </table>
+            #{render_current_instruction}
           </div>
         </div>
         <div class="row">
 
           <div class="span2 well threads">
-            <h2>Threads</h2>
-            <table>
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>ID</th>
-                  <th>PC</th>
-                </tr>
-              </thead>
-              <tbody>
-              #{ @vm.thread_pcs.each_with_index.map { |thread_pc,thread_id|
-                classes = []
-                classes << "current" if thread_id == @vm.thread_id
-                %(
-                <tr class="#{classes.join(" ")}">
-                  <td class="name">#{@vm.thread_names[thread_id]}</td>
-                  <td class="id">#{thread_id}</td>
-                  <td class="pc">#{thread_pc}</td>
-                </tr>
-              )}.join("\n")}
-              </tbody>
-            </table>
+            #{render_threads}
           </div>
 
-          <div class="span5 well memory">
-            <h2>Memory</h2>
-            #{memory_view(16,8,43808,true)}
+          <div class="span6 well memory">
+            #{render_memory}
           </div>
 
           <div class="span5 well game_objects">
-            <h2>Game Objects</h2>
-            <table class="table table-condensed table-bordered">
-              <tr>
-                <th>VM Addr</th>
-                <th>VM ID</th>
-                <th>Object</th>
-                <th></th>
-              </tr>
-              #{@vm.game_objects.each_pair.inject("") { |str,(address,object)|
-                alloc_data = @vm.allocations[address]
-                str << %(
-                  <tr class="meta game_object_#{alloc_data[1]}">
-                    <td class="address">#{address}</td>
-                    <td class="allocation_id">#{alloc_data[1]}</td>
-                    <td class="allocated_as">#{alloc_data[2].name} #{alloc_data[1]}</td>
-                    <td class="inspect">#{h object.inspect}</td>
-                  </tr>
-                )
-              }}
-            </table>
+            #{render_game_objects}
           </div>
         </div>
       HTML
@@ -205,8 +244,17 @@ class VmHost
 
           #{last_exception_view if @last_exception}
 
+          <div class="span12 well" style="position: absolute; top: 0; right: 0">
+            <div class="map_holder" style="zoom: 0.2">
+              <div class="layers"></div>
+              <div class="bg">
+                <img src="/main.jpg" width="6000" height="6000"  />
+              </div>
+            </div>
+          </div>
+
           <div class="row">
-            #{process_stats_view}
+            #{render_stats}
           #{template_value}
 
           <div class="row footer">
@@ -308,21 +356,6 @@ class VmHost
         <h1>#{@last_exception.class.name}</h1>
         <h2>#{@last_exception.message}</h2>
         <div class="backtrace">#{cleaned_backtrace.join("<br />\n")}</div>
-      </div>
-    HTML
-  end
-
-  def process_stats_view
-    <<-HTML
-      <div class="well span2">
-        <dl>
-          <dt>Process memory</dt>
-          <dd>#{@total_memory}kb</dd>
-          <dt>Template</dt>
-          <dd>#{"%.6f" % @template_time} sec</dd>
-          <dt>Ticks</dt>
-          <dd>#{"%.6f" % (@last_tick_times.inject(:+) / @last_tick_times.size.to_f)} sec avg, x #{@last_tick_times.size}</dd>
-        </dl>
       </div>
     HTML
   end

@@ -1,6 +1,7 @@
 class GameObject < OpenStruct
   def initialize(attributes = {})
     super( self.class.initialize_attributes(attributes) )
+    @dirty = false
   end
 
   def assign_from_args(args,options = {})
@@ -29,4 +30,16 @@ class GameObject < OpenStruct
   def self.float; :float; end
   def self.int;   :int;   end
   def self.bool;  :bool;  end
+
+  # openstruct uses this to access @table for modifications, so if hit it means it's dirty
+  def modifiable
+    @dirty = true
+    super
+  end
+
+  def dirty_check!
+    was_dirty = @dirty
+    @dirty = false
+    was_dirty
+  end
 end

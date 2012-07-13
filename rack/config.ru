@@ -38,8 +38,10 @@ app = proc do |env|
     @vm_host.render_main
   when %r{\A/\Z}
     @vm_host.render_main
-  when %{\A/favicon.ico}
+  when %r{\A/favicon.ico}
     [404,{"Content-Type" => "text/plain"},[]]
+  when %r{\A/main.jpg}
+    [200,{"Content-Type" => "image/jpeg"},[File.read("./rack/public/main.jpg")]]
   else
     [404,{"Content-Type" => "text/plain"},[]]    
   end
