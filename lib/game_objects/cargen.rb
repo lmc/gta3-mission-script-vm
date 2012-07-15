@@ -14,4 +14,8 @@ class Cargen < GameObject
       delay_max: int
     }
   end
+
+  def self.map_render_args
+    [:point_3d_r,[:x,:y,:z,:rz]]
+  end
 end

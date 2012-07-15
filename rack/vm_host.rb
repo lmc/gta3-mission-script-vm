@@ -135,8 +135,9 @@ class VmHost
         </tr>
         #{@vm.game_objects.each_pair.inject("") { |str,(address,object)|
           alloc_data = @vm.allocations[address]
+          data = object.map_render_args
           str << %(
-            <tr class="meta game_object_#{alloc_data[1]} hl_address hl_address_#{address}">
+            <tr class="meta game_object_#{alloc_data[1]} hl_address hl_address_#{address} hl_render" data-render-type="#{data[0]}" data-render-args="#{data[1].to_json}">
               <td class="address">#{address}</td>
               <td class="allocation_id">#{alloc_data[1]}</td>
               <td class="allocated_as">#{alloc_data[2].name} #{alloc_data[1]}</td>
@@ -209,7 +210,8 @@ class VmHost
           <script type="text/javascript" src="http://twitter.github.com/bootstrap/assets/js/jquery.js"></script>
           <script type="text/javascript" src="http://twitter.github.com/bootstrap/assets/js/bootstrap-tooltip.js"></script>
           <script type="text/javascript" src="http://twitter.github.com/bootstrap/assets/js/bootstrap-popover.js"></script>
-          <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.18/jquery-ui.min.js"></script>
+          <script type="text/javascript" src="http://twitter.github.com/bootstrap/assets/js/bootstrap-popover.js"></script>
+          <script type="text/javascript" src="http://flesler-plugins.googlecode.com/files/jquery.scrollTo-1.4.2-min.js"></script>
 
           <style>
             body { zoom: 0.5; }
@@ -240,6 +242,13 @@ class VmHost
 
             .game_objects td.address { width: 5em; text-align: right; }
             .game_objects td.allocation_id { width: 3em; }
+
+            .map_outer { position: relative; width: 1200px; height: 1200px; overflow: scroll; }
+            .map_holder { zoom: 0.2; }
+            .map_holder .layers { position: absolute; top: 0; left: 0; width: 6000px; height: 6000px; z-index: 1; border: 1px #000 solid; }
+            .map_holder .bg { position: absolute; top: 0; left: 0; width: 6000px; height: 6000px; z-index: 0; border: 1px #000 solid; }
+
+            .map_holder .render_target { position: absolute; width: 5px; height: 5px; background-color: #FFF; border: 1px #000 solid; }
           </style>
         </head>
 
@@ -257,11 +266,18 @@ class VmHost
 
           #{last_exception_view if @last_exception}
 
-          <div class="span12 well" style="position: absolute; top: 0; right: 0">
-            <div class="map_holder" style="zoom: 0.2">
-              <div class="layers"></div>
-              <div class="bg">
-                <img src="/main.jpg" width="6000" height="6000"  />
+          <div class="span12 well" style="position: absolute; top: 0; right: 0; width: 1200px; height: 1200px;">
+            <div class="btn-group zoom_manager">
+              <button class="btn">1</button>
+              <button class="btn">2</button>
+              <button class="btn">3</button>
+            </div>
+            <div class="map_outer">
+              <div class="map_holder">
+                <div class="layers"></div>
+                <div class="bg">
+                  <img src="/main.jpg" width="6000" height="6000"  />
+                </div>
               </div>
             </div>
           </div>
@@ -293,22 +309,74 @@ class VmHost
               return false;
             });
 
+            $('.zoom_manager button').live("click",function(ev){
+              var map = $('.map_holder');
+              var zoom = 1.0;
+              var text = $(ev.target).text();
+              console.log(text);
+              switch(text){
+                case "1":
+                  zoom = 0.2; break;
+                case "2":
+                  zoom = 0.5; break;
+                case "3":
+                  zoom = 1.0; break;
+              }
+              map.css('zoom',zoom);
+            });
+
             $('.hl_address').live("mouseover",function(ev){
               var element = ev.target;
-              var address = element.className.match(/hl_address_(\\d+)/)[1];
+              var address = element.className.match(/hl_address_(\\d+)/);
+              if(!address) return;
+              address = address[0];
               var matched = $('.hl_address_'+address);
               matched.push(element);
-              console.log(matched);
               matched.addClass("hover");
             });
 
             $('.hl_address').live("mouseout", function(ev){
               var element = ev.target;
-              var address = element.className.match(/hl_address_(\\d+)/)[1];
+              var address = element.className.match(/hl_address_(\\d+)/);
+              if(!address) return;
+              address = address[0];
               var matched = $('.hl_address_'+address);
               matched.push(element);
               matched.removeClass("hover");
             });
+            
+            $('.hl_render').click(function(ev){
+              $(ev.target).hl_render();
+            })
+            
+            var origin = { x: 3000.0, y: 3000.0 }; //coords render offset
+            var origind = { x: 1.0, y: -1.0 };
+            var coords2px = function(x,y){ return {x: ((x*origind.x)+origin.x), y: ((y*origind.y)+origin.y)}; };
+            var render_types = {
+              point_3d: function(layer_div,args){
+                var div = $('<div>');
+                div.addClass('render_target');
+                var pos = coords2px(args[0],args[1]);
+                console.log(pos);
+                div.css('left',pos.x).css('top',pos.y);
+                $('.map_outer').scrollTo({left: ''+pos.x+'px', top: ''+pos.y+'px'},800);
+                layer_div.prepend(div);
+                return div;
+              }
+            };
+            $.fn.hl_render = function(el){
+              var row = this.parent(".hl_render");
+              var render_type = row.data('render-type');
+              var render_args = row.data('render-args');
+
+              if(row[0].render_target){
+                row[0].render_target.remove();
+              }
+
+              var layer_div = $('.map_holder .layers');
+              row[0].render_target = render_types[render_type](layer_div,render_args);
+              console.log(row[0].render_target);
+            };
 
             var dt_shorthands = #{Vm::TYPE_SHORTHANDS.invert.to_json};
             $('.memory table a.allocated').popover({

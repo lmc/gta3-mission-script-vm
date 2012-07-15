@@ -18,6 +18,15 @@ class GameObject < OpenStruct
     nil
   end
 
+  def self.map_render_args
+    raise "Abstract method"
+  end
+  def map_render_args
+    args = self.class.map_render_args.dup
+    args[1].map! { |a| send(a) }
+    args
+  end
+
   def self.initialize_attributes(attributes)
     defaults = Hash[ self.attributes.map { |attribute,type| [attribute,nil] } ]
     defaults.merge(attributes)
