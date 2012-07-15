@@ -88,6 +88,7 @@ class Vm
 
   attr_accessor :opcode_map
 
+  attr_accessor :tick_count
   attr_accessor :dirty
 
   DATA_TYPE_MAX = 31
@@ -118,11 +119,8 @@ class Vm
 
     self.game_objects = {}
 
+    self.tick_count = 0
     self.dirty = {}
-    # self.dirty[:threads]
-    # self.dirty[:memory]
-    # self.dirty[:game_objects]
-    # self.dirty[:map]
 
     detect_scm_structures!
     build_opcode_map!
@@ -172,6 +170,7 @@ class Vm
   end
 
   def tick!
+    self.tick_count += 1
     reset_dirty_state
     
     mem_width = 32#40

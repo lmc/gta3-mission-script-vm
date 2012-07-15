@@ -34,14 +34,21 @@ class VmHost
     }] ]
   end
 
+  def render_json
+    segments = [:stats,:current_instruction]
+    segments += @vm.dirty.select { |k,v| v == true }.keys
+    response = {
+      segments: Hash[ segments.map { |segment| [segment,send("render_#{segment}")] } ]
+    }
+    [200, {"Content-Type" => "application/json"}, [response.to_json]]
+  end
+
   def render_stats
     <<-HTML
       <div class="well span2">
         <dl>
           <dt>Process memory</dt>
           <dd>#{@total_memory}kb</dd>
-          <dt>Template</dt>
-          <dd>#{"%.6f" % @template_time} sec</dd>
           <dt>Ticks</dt>
           <dd>#{"%.6f" % (@last_tick_times.inject(:+) / @last_tick_times.size.to_f)} sec avg, x #{@last_tick_times.size}</dd>
         </dl>
@@ -145,7 +152,12 @@ class VmHost
     if data_type == 0x00
       "[end of args]"
     else
-      @vm.arg_to_native(data_type,value).inspect
+      arg = @vm.arg_to_native(data_type,value)
+      if arg.is_a?(Float)
+        "%.5f" % arg
+      else
+        arg.inspect
+      end
     end
   rescue
     h(value.inspect)
@@ -158,22 +170,22 @@ class VmHost
   def render_main_body
     template do
       <<-HTML
-          <!-- open div class=row above -->
-          <div class="span10 well current_instruction">
+        <div class="row">
+          <div class="span10 well current_instruction" id="segment_current_instruction">
             #{render_current_instruction}
           </div>
         </div>
         <div class="row">
 
-          <div class="span2 well threads">
+          <div class="span2 well threads" id="segment_threads">
             #{render_threads}
           </div>
 
-          <div class="span6 well memory">
+          <div class="span6 well memory" id="segment_memory">
             #{render_memory}
           </div>
 
-          <div class="span5 well game_objects">
+          <div class="span5 well game_objects" id="segment_game_objects">
             #{render_game_objects}
           </div>
         </div>
@@ -182,8 +194,7 @@ class VmHost
   end
 
   def template(&block)
-    template_value = ""
-    @template_time = Benchmark.measure { template_value = yield }.real
+    template_value = yield
     <<-HTML
       <!DOCTYPE html>
       <html lang="en">
@@ -232,7 +243,7 @@ class VmHost
 
         <body>
           <div class="row">
-            <form action="/tick" method="get" class="form-inline well span3">
+            <form action="/tick" method="get" class="form-inline well span3" id="tick_form">
               <label>Number of ticks</label>
               <input name="ticks" value="1" type="text" class="span1" />
               <button type="submit" class="btn">Tick!</button>
@@ -253,8 +264,10 @@ class VmHost
             </div>
           </div>
 
-          <div class="row">
+          <div class="row" id="segment_stats">
             #{render_stats}
+          </div>
+
           #{template_value}
 
           <div class="row footer">
@@ -262,6 +275,21 @@ class VmHost
           </div>
 
           <script>
+            $('#tick_form').submit(function(){
+              $.get("/tick",function(response){
+                $.each(response.segments,function(segment_id,html){
+                  //var element = $('#segment_'+segment_id);
+                  var element = document.getElementById("segment_"+segment_id);
+                  if(element){
+                    element.innerHTML = html;
+                  }else{
+                    //alert("No element for segment: #segment_"+segment_id);
+                    //alert("No element for segment: "+segment_id);
+                  }
+                })
+              })
+              return false;
+            });
             $('.current_instruction a').mouseover(function(){
               $this = $(this);
               $this.css('background-color',$this.css('color'));

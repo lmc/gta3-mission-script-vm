@@ -30,7 +30,7 @@ app = proc do |env|
   when %r{\A/tick}
     ticks = env["QUERY_STRING"].scan(/ticks=(\d+)/)[0][0].to_i rescue 1
     @vm_host.tick(ticks)
-    @vm_host.render_main
+    @vm_host.render_json
   when %r{\A/reset}
     @vm = Vm.load_scm("main")
     @vm.tick!
