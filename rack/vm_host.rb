@@ -75,11 +75,11 @@ class VmHost
           attrs = ""
           value = format_arg(data_type,value)
           if data_type == TYPE_SHORTHANDS[:pg_if]
-            attrs << %(href="#" data-address="#{value}")
+            attrs << %(href="#" class="hl_address hl_address_#{value}")
           end
           str << %(
-            <td>
-              <a #{attrs}>
+            <td #{attrs}>
+              <a>
                 #{value}
               </a>
             </td>
@@ -136,7 +136,7 @@ class VmHost
         #{@vm.game_objects.each_pair.inject("") { |str,(address,object)|
           alloc_data = @vm.allocations[address]
           str << %(
-            <tr class="meta game_object_#{alloc_data[1]}">
+            <tr class="meta game_object_#{alloc_data[1]} hl_address hl_address_#{address}">
               <td class="address">#{address}</td>
               <td class="allocation_id">#{alloc_data[1]}</td>
               <td class="allocated_as">#{alloc_data[2].name} #{alloc_data[1]}</td>
@@ -214,6 +214,8 @@ class VmHost
           <style>
             body { zoom: 0.5; }
 
+            .hl_address.hover { background-color: #f8f !important; }
+
             span.opcode    { color: #5BB75B; }
             span.data_type { color: #49AFCD; }
             span.value     { color: #0074CC; }
@@ -290,25 +292,24 @@ class VmHost
               })
               return false;
             });
-            $('.current_instruction a').mouseover(function(){
-              $this = $(this);
-              $this.css('background-color',$this.css('color'));
-              $this.css('color','#FFF');
-              var klass = "address_"+$(this).data("address");;
-              var el = $('a.'+klass);
-              el.css('background-color',el.css('color'));
-              el.css('color','#FFF');
-              el.popover('show');
+
+            $('.hl_address').live("mouseover",function(ev){
+              var element = ev.target;
+              var address = element.className.match(/hl_address_(\\d+)/)[1];
+              var matched = $('.hl_address_'+address);
+              matched.push(element);
+              console.log(matched);
+              matched.addClass("hover");
             });
-            $('.current_instruction a').mouseout(function(){
-              $this = $(this);
-              $this.css('color',$this.css('background-color'));
-              $this.css('background','none');              var klass = "address_"+$(this).data("address");;
-              var el = $('a.'+klass);
-              el.css('color',el.css('background-color'));
-              el.css('background','none');
-              el.popover('hide');
+
+            $('.hl_address').live("mouseout", function(ev){
+              var element = ev.target;
+              var address = element.className.match(/hl_address_(\\d+)/)[1];
+              var matched = $('.hl_address_'+address);
+              matched.push(element);
+              matched.removeClass("hover");
             });
+
             var dt_shorthands = #{Vm::TYPE_SHORTHANDS.invert.to_json};
             $('.memory table a.allocated').popover({
               placement: "top",
@@ -348,7 +349,7 @@ class VmHost
 
         if @vm.allocations[address]
           bytes_left = Vm::TYPE_SIZES[ @vm.allocations[address][0] ]
-          classes = "allocated address_#{address} data_type_#{@vm.allocations[address][0]} allocation_id_#{@vm.allocations[address][1]}"
+          classes = "allocated hl_address hl_address_#{address} data_type_#{@vm.allocations[address][0]} allocation_id_#{@vm.allocations[address][1]}"
           bytes = @vm.read(address,bytes_left)
           native = @vm.arg_to_native(@vm.allocations[address][0],bytes)
           tag_open = %(<a class="#{classes}" href="#" data-native="#{native}" data-bytes="#{hex(bytes)}" data-data_type="#{@vm.allocations[address][0]}" data-allocation_id="#{@vm.allocations[address][1]}">)
