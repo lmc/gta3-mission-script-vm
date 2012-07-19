@@ -34,6 +34,10 @@ class VmHost
     }] ]
   end
 
+  def render_main_body
+    template
+  end
+
   def render_json
     segments = [:stats,:current_instruction]
     segments += @vm.dirty.select { |k,v| v == true }.keys
@@ -44,22 +48,32 @@ class VmHost
     [200, {"Content-Type" => "application/json"}, [response.to_json]]
   end
 
+  def render_vm_controls
+    <<-HTML
+      <form action="/tick" method="get" class="form-inline" id="tick_form">
+        <label>Number of ticks</label>
+        <input name="ticks" value="1" type="text" class="span1" />
+        <button type="submit" class="btn">Tick!</button>
+      </form>
+      <form action="/reset" method="get" class="form-inline">
+        <button type="submit" class="btn btn-danger">Reset</button>
+      </form>
+    HTML
+  end
+
   def render_stats
     <<-HTML
-      <div class="well span2">
-        <dl>
-          <dt>Process memory</dt>
-          <dd>#{@total_memory}kb</dd>
-          <dt>Ticks</dt>
-          <dd>#{"%.6f" % (@last_tick_times.inject(:+) / @last_tick_times.size.to_f)} sec avg, x #{@last_tick_times.size}</dd>
-        </dl>
-      </div>
+      <dl>
+        <dt>Process memory</dt>
+        <dd>#{@total_memory}kb</dd>
+        <dt>Ticks</dt>
+        <dd>#{"%.6f" % (@last_tick_times.inject(:+) / @last_tick_times.size.to_f)} sec avg, x #{@last_tick_times.size}</dd>
+      </dl>
     HTML
   end
 
   def render_current_instruction
     <<-HTML
-      <h2>Current instruction</h2>
       <table class="table table-bordered table-condensed">
         <tr>
           <td class="opcode"><span class="opcode">#{hex(@vm.opcode)}</span></td>
@@ -92,7 +106,6 @@ class VmHost
 
   def render_threads
     <<-HTML
-      <h2>Threads</h2>
       <table>
         <thead>
           <tr>
@@ -119,14 +132,12 @@ class VmHost
 
   def render_memory
     <<-HTML
-      <h2>Memory</h2>
       #{memory_view(16,8,43808,true)}
     HTML
   end
 
   def render_game_objects
     <<-HTML
-      <h2>Game Objects</h2>
       <table class="table table-condensed table-bordered">
         <tr>
           <th>Addr</th>
@@ -169,34 +180,8 @@ class VmHost
     CGI.escape_html(str)
   end
 
-  def render_main_body
-    template do
-      <<-HTML
-        <div class="row">
-          <div class="span10 well current_instruction" id="segment_current_instruction">
-            #{render_current_instruction}
-          </div>
-        </div>
-        <div class="row">
-
-          <div class="span2 well threads" id="segment_threads">
-            #{render_threads}
-          </div>
-
-          <div class="span6 well memory" id="segment_memory">
-            #{render_memory}
-          </div>
-
-          <div class="span5 well game_objects" id="segment_game_objects">
-            #{render_game_objects}
-          </div>
-        </div>
-      HTML
-    end
-  end
-
   def template(&block)
-    template_value = yield
+    template_value = block_given? ? yield : ""
     <<-HTML
       <!DOCTYPE html>
       <html lang="en">
@@ -219,43 +204,54 @@ class VmHost
         </head>
 
         <body>
-          <div class="row">
-            <form action="/tick" method="get" class="form-inline well span3" id="tick_form">
-              <label>Number of ticks</label>
-              <input name="ticks" value="1" type="text" class="span1" />
-              <button type="submit" class="btn">Tick!</button>
-            </form>
-            <form action="/reset" method="get" class="form-inline well span1">
-              <button type="submit" class="btn btn-danger">Reset</button>
-            </form>
-          </div>
 
-          #{last_exception_view if @last_exception}
-
-          <div class="span12 well" style="position: absolute; top: 0; right: 0; width: 1200px; height: 1200px;">
-            <div class="btn-group zoom_manager">
-              <button class="btn">1</button>
-              <button class="btn">2</button>
-              <button class="btn">3</button>
+          <div class="column span4">
+            <div class="well span4">
+              <h1>VM</h1>
+              <div id="vm_controls">
+                #{render_vm_controls}
+              </div>
             </div>
-            <div class="map_outer">
-              <div class="map_holder">
-                <div class="layers"></div>
-                <div class="bg">
-                  <img src="/images/main.jpg" width="6000" height="6000"  />
-                </div>
+            <div class="well span4 game_state">
+              <h1>GS</h1>
+              <div id="segment_stats">
+                #{render_stats}
               </div>
             </div>
           </div>
 
-          <div class="row" id="segment_stats">
-            #{render_stats}
+          <div class="column span4 offset1 well threads">
+            <h1>Threads</h1>
+            <div class="threads_holder span4" id="segment_threads">
+              #{render_threads}
+            </div>
           </div>
 
-          #{template_value}
+          <div class="row memory_game_objects_current_instruction">
+            <div class="row">
+              <div class="column span8 well memory">
+                <h1>Memory</h1>
+                <div id="segment_memory">
+                  #{render_memory}
+                </div>
+              </div>
 
-          <div class="row footer">
-            scm
+              <div class="column span8 well game_objects">
+                <h1>Game objects</h1>
+                <div id="segment_game_objects">
+                  #{render_game_objects}
+                </div>
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="span12 well">
+                <h1>Instruction</h1>
+                <div id="segment_current_instruction">
+                  #{render_current_instruction}
+                </div>
+              </div>
+            </div>
           </div>
 
         </body>
