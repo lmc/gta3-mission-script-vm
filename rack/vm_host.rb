@@ -204,53 +204,18 @@ class VmHost
           <meta charset="utf-8">
           <title>gta3-mission-script-vm</title>
 
-          <!-- Le styles -->
-          <link href="http://twitter.github.com/bootstrap/assets/css/bootstrap.css" rel="stylesheet">
-          <link href="http://twitter.github.com/bootstrap/assets/css/bootstrap-responsive.css" rel="stylesheet">
-          <link href="http://twitter.github.com/bootstrap/assets/js/google-code-prettify/prettify.css" rel="stylesheet">
-          <script type="text/javascript" src="http://twitter.github.com/bootstrap/assets/js/jquery.js"></script>
-          <script type="text/javascript" src="http://twitter.github.com/bootstrap/assets/js/bootstrap-tooltip.js"></script>
-          <script type="text/javascript" src="http://twitter.github.com/bootstrap/assets/js/bootstrap-popover.js"></script>
-          <script type="text/javascript" src="http://twitter.github.com/bootstrap/assets/js/bootstrap-popover.js"></script>
-          <script type="text/javascript" src="http://flesler-plugins.googlecode.com/files/jquery.scrollTo-1.4.2-min.js"></script>
+          <link href="/stylesheets/bootstrap.css" rel="stylesheet">
+          <link href="/stylesheets/bootstrap-responsive.css" rel="stylesheet">
+          <link href="/stylesheets/vm_host.css" rel="stylesheet">
 
-          <style>
-            body { zoom: 0.5; }
-
-            .hl_address.hover { background-color: #f8f !important; }
-
-            span.opcode    { color: #5BB75B; }
-            span.data_type { color: #49AFCD; }
-            span.value     { color: #0074CC; }
-
-            .current_instruction table { width: auto; }
-            .current_instruction td { font-family: monospace; padding-left: 1em; }
-            .current_instruction td.opcode { width: 10em; text-align: right; }
-
-            .memory table tbody { font-family: monospace; display: block; height: 20em; overflow-y: scroll; }
-            .memory .address { width: 3em; text-align: right; padding-right: 1em; }
-            .memory .allocated   { text-decoration: underline; }
-            .memory .data_type_1 { color: #0074CC; }
-            .memory .data_type_2 { color: #5BB75B; }
-            .memory .data_type_4 { color: #0074CC; }
-            .memory .data_type_6 { color: #FAA732; }
-
-            .threads tr { color: #888; }
-            .threads tr.current { color: #333; }
-            .threads .name { width: 3em; text-align: right; padding-right: 1em;  }
-            .threads .id { width: 1em; text-align: left;  padding-right: 1em; }
-            .threads .pc {  }
-
-            .game_objects td.address { width: 5em; text-align: right; }
-            .game_objects td.allocation_id { width: 3em; }
-
-            .map_outer { position: relative; width: 1200px; height: 1200px; overflow: scroll; }
-            .map_holder { zoom: 0.2; }
-            .map_holder .layers { position: absolute; top: 0; left: 0; width: 6000px; height: 6000px; z-index: 1; border: 1px #000 solid; }
-            .map_holder .bg { position: absolute; top: 0; left: 0; width: 6000px; height: 6000px; z-index: 0; border: 1px #000 solid; }
-
-            .map_holder .render_target { position: absolute; width: 5px; height: 5px; background-color: #FFF; border: 1px #000 solid; }
-          </style>
+          <script type="text/javascript">
+            var dt_shorthands = #{Vm::TYPE_SHORTHANDS.invert.to_json};
+          </script>
+          <script type="text/javascript" src="/javascripts/jquery.js"></script>
+          <script type="text/javascript" src="/javascripts/bootstrap-tooltip.js"></script>
+          <script type="text/javascript" src="/javascripts/bootstrap-popover.js"></script>
+          <script type="text/javascript" src="/javascripts/jquery.scrollTo-1.4.2-min.js"></script>
+          <script type="text/javascript" src="/javascripts/vm_host.js"></script>
         </head>
 
         <body>
@@ -292,122 +257,6 @@ class VmHost
           <div class="row footer">
             scm
           </div>
-
-          <script>
-            $('#tick_form').submit(function(){
-              $.get("/tick",function(response){
-                $.each(response.segments,function(segment_id,html){
-                  //var element = $('#segment_'+segment_id);
-                  var element = document.getElementById("segment_"+segment_id);
-                  if(element){
-                    element.innerHTML = html;
-                  }else{
-                    //alert("No element for segment: #segment_"+segment_id);
-                    alert("No element for segment: "+segment_id);
-                  }
-                })
-              })
-              return false;
-            });
-
-
-            $('.hl_address').live("mouseover",function(ev){
-              var element = ev.target;
-              var address = element.className.match(/hl_address_(\\d+)/);
-              if(!address) return;
-              address = address[0];
-              var matched = $('.hl_address_'+address);
-              matched.push(element);
-              matched.addClass("hover");
-            });
-
-            $('.hl_address').live("mouseout", function(ev){
-              var element = ev.target;
-              var address = element.className.match(/hl_address_(\\d+)/);
-              if(!address) return;
-              address = address[0];
-              var matched = $('.hl_address_'+address);
-              matched.push(element);
-              matched.removeClass("hover");
-            });
-
-
-            var zoom_manager_el_id = '.map_holder';
-            var zoom_manager_zoom = 1.0;
-            var zoom_manager_width_px = 1200;
-            var zoom_manager_height_px = 1200;
-
-            $('.zoom_manager button').live("click",function(ev){
-              var map = $(zoom_manager_el_id);
-              var zoom = 1.0;
-              var text = $(ev.target).text();
-              switch(text){
-                case "1":
-                  zoom_manager_zoom = 0.2; break;
-                case "2":
-                  zoom_manager_zoom = 0.5; break;
-                case "3":
-                  zoom_manager_zoom = 1.0; break;
-              }
-              map.css('zoom',zoom_manager_zoom);
-            });
-            
-            $('.hl_render').live("click",function(ev){
-              $(ev.target).hl_render();
-            })
-            
-            var origin = { x: 3000.0, y: 3000.0 }; //coords render offset
-            var origind = { x: 1.0, y: -1.0 };
-            var coords2px = function(x,y){ return {x: ((x*origind.x)+origin.x), y: ((y*origind.y)+origin.y)}; };
-            var render_types = {
-              point_3d: function(layer_div,args){
-                var div = $('<div>');
-                div.addClass('render_target');
-                var pos = coords2px(args[0],args[1]);
-
-                var icon_width = 16, icon_height = 16;
-                var icon_x = pos.x - (icon_width/2), icon_y = pos.y - (icon_height/2);
-                div.css('left',pos.x).css('top',pos.y).css('width',icon_width).css('height',icon_height);
-
-                var scroll_x = pos.x - (zoom_manager_width_px/2), scroll_y = pos.y - (zoom_manager_height_px/2);
-                $('.map_outer').scrollTo({left: ''+scroll_x+'px', top: ''+scroll_y+'px'},500);
-
-                layer_div.prepend(div);
-                return div;
-              }
-            };
-            $.fn.hl_render = function(el){
-              var row = this.parent(".hl_render");
-              var render_type = row.data('render-type');
-              var render_args = row.data('render-args');
-
-              if(row[0].render_target){
-                row[0].render_target.remove();
-              }
-
-              var layer_div = $('.map_holder .layers');
-              row[0].render_target = render_types[render_type](layer_div,render_args);
-              console.log(row[0].render_target);
-            };
-
-            var dt_shorthands = #{Vm::TYPE_SHORTHANDS.invert.to_json};
-            $('.memory table a.allocated').popover({
-              placement: "top",
-              title: function(){ return $(this).data("native"); },
-              content: function(){
-                $this = $(this);
-                var data_type = $this.data("data_type");
-                var s = "";
-                  s += "<dl>";
-                  s += "<dt>Data type</dt><dd>"+data_type+" "+dt_shorthands[data_type]+"</dd>";
-                  if($this.data("allocation_id")){
-                    s += "<dt>Game object</dt><dd>"+$this.data("allocation_id")+"</dd>";
-                  }
-                  s += "</dl>";
-                return s;
-              }
-            });
-          </script>
 
         </body>
       </html>

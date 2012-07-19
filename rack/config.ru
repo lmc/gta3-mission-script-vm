@@ -3,7 +3,7 @@ load "./lib/vm.rb"
 require 'cgi'
 require 'benchmark'
 #use Rack::Reloader, 0
-use Rack::Static, :urls => ["/images","/javascripts"], :root => "rack/public"
+use Rack::Static, :urls => ["/images","/javascripts","/stylesheets"], :root => "rack/public"
 use Rack::ContentLength
 
 should_reload = true
