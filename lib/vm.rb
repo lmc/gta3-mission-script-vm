@@ -97,7 +97,7 @@ class Vm
 
   DIRTY_STATES = [:threads,:memory,:game_objects,:map]
 
-  def self.load_scm(scm = "main")
+  def self.load_scm(scm = "main-vc")
     new( File.read("#{`pwd`.strip}/#{scm}.scm") )
   end
 
@@ -535,7 +535,10 @@ end
 
 class String
   def strip_to_null
-    gsub(/#{0x00}.+$/,"")
+    temp = self.bytes.to_a
+    null_index = temp.index(0)
+    temp[0...null_index].to_byte_string
+    #gsub(/#{0x00}.+$/,"")
   end
 end
 

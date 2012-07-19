@@ -32,3 +32,31 @@ Does really ugly branching
 irb(main):001:0> (load("lib/vm.rb") && Vm.load_scm("main").run)
 
 ```
+
+TODO:
+
+Refactor JS (possibly backbone later)
+Google Maps/WebGL map viewer
+  Draw opcode arguments
+  Draw game objects
+  Draw things from game data files
+Nicer thread/current instruction view
+  Disassembly around PC
+  Local thread variables
+  Show current thread only, can scroll/expand horizontally for others
+
+Panels
+  VM state/stats
+    Tick once/more
+    Update game time normal/more/less (1 tick = 1ms?)
+    View/edit conditions
+  Game state
+    Render positions
+    Game time
+    World time
+    Screen/camera state
+    Current mission
+  Threads
+  Memory
+  Game objects
+  Map

@@ -37,6 +37,7 @@ class VmHost
   def render_json
     segments = [:stats,:current_instruction]
     segments += @vm.dirty.select { |k,v| v == true }.keys
+    puts segments.inspect
     response = {
       segments: Hash[ segments.map { |segment| [segment,send("render_#{segment}")] } ]
     }
@@ -276,7 +277,7 @@ class VmHost
               <div class="map_holder">
                 <div class="layers"></div>
                 <div class="bg">
-                  <img src="/main.jpg" width="6000" height="6000"  />
+                  <img src="/images/main.jpg" width="6000" height="6000"  />
                 </div>
               </div>
             </div>
@@ -302,28 +303,13 @@ class VmHost
                     element.innerHTML = html;
                   }else{
                     //alert("No element for segment: #segment_"+segment_id);
-                    //alert("No element for segment: "+segment_id);
+                    alert("No element for segment: "+segment_id);
                   }
                 })
               })
               return false;
             });
 
-            $('.zoom_manager button').live("click",function(ev){
-              var map = $('.map_holder');
-              var zoom = 1.0;
-              var text = $(ev.target).text();
-              console.log(text);
-              switch(text){
-                case "1":
-                  zoom = 0.2; break;
-                case "2":
-                  zoom = 0.5; break;
-                case "3":
-                  zoom = 1.0; break;
-              }
-              map.css('zoom',zoom);
-            });
 
             $('.hl_address').live("mouseover",function(ev){
               var element = ev.target;
@@ -344,8 +330,29 @@ class VmHost
               matched.push(element);
               matched.removeClass("hover");
             });
+
+
+            var zoom_manager_el_id = '.map_holder';
+            var zoom_manager_zoom = 1.0;
+            var zoom_manager_width_px = 1200;
+            var zoom_manager_height_px = 1200;
+
+            $('.zoom_manager button').live("click",function(ev){
+              var map = $(zoom_manager_el_id);
+              var zoom = 1.0;
+              var text = $(ev.target).text();
+              switch(text){
+                case "1":
+                  zoom_manager_zoom = 0.2; break;
+                case "2":
+                  zoom_manager_zoom = 0.5; break;
+                case "3":
+                  zoom_manager_zoom = 1.0; break;
+              }
+              map.css('zoom',zoom_manager_zoom);
+            });
             
-            $('.hl_render').click(function(ev){
+            $('.hl_render').live("click",function(ev){
               $(ev.target).hl_render();
             })
             
@@ -357,9 +364,14 @@ class VmHost
                 var div = $('<div>');
                 div.addClass('render_target');
                 var pos = coords2px(args[0],args[1]);
-                console.log(pos);
-                div.css('left',pos.x).css('top',pos.y);
-                $('.map_outer').scrollTo({left: ''+pos.x+'px', top: ''+pos.y+'px'},800);
+
+                var icon_width = 16, icon_height = 16;
+                var icon_x = pos.x - (icon_width/2), icon_y = pos.y - (icon_height/2);
+                div.css('left',pos.x).css('top',pos.y).css('width',icon_width).css('height',icon_height);
+
+                var scroll_x = pos.x - (zoom_manager_width_px/2), scroll_y = pos.y - (zoom_manager_height_px/2);
+                $('.map_outer').scrollTo({left: ''+scroll_x+'px', top: ''+scroll_y+'px'},500);
+
                 layer_div.prepend(div);
                 return div;
               }

@@ -3,6 +3,7 @@ load "./lib/vm.rb"
 require 'cgi'
 require 'benchmark'
 #use Rack::Reloader, 0
+use Rack::Static, :urls => ["/images","/javascripts"], :root => "rack/public"
 use Rack::ContentLength
 
 should_reload = true
@@ -12,7 +13,7 @@ def reload!(vm)
   VmHost.new(vm)
 end
 
-@vm = Vm.load_scm("main")
+@vm = Vm.load_scm("main-vc")
 @vm.tick!
 
 @vm_host = reload!(@vm)

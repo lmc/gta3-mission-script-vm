@@ -1,7 +1,7 @@
 class GameObject < OpenStruct
   def initialize(attributes = {})
     super( self.class.initialize_attributes(attributes) )
-    @dirty = false
+    @dirty = true #always dirty, need to update game objects when it's created
   end
 
   def assign_from_args(args,options = {})
@@ -22,6 +22,7 @@ class GameObject < OpenStruct
     raise "Abstract method"
   end
   def map_render_args
+    return [nil,[]] if self.class.map_render_args.nil?
     args = self.class.map_render_args.dup
     args[1].map! { |a| send(a) }
     args
