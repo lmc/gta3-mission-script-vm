@@ -10,6 +10,8 @@ module Opcodes
 
   SWITCH_THREAD_ON_INIT = true
 
+  parse_from_scm_ini("data/vc/VICESCM.ini")
+
   opcode("0002", "jump", jump_location:int) do |args|
     self.pc = args.jump_location
   end

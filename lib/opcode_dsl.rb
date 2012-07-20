@@ -15,6 +15,19 @@ module OpcodeDsl
         define_method("opcode_#{opcode_name_string}",&block)
       end
 
+      def self.parse_from_scm_ini(path_to_ini)
+        File.open(path_to_ini,"r").read.each_line do |line|
+          next unless line =~ /\A([0-9a-f]{4})\=(\d+),/i
+          opcode, arg_count = $1.upcase, $2.to_i
+          
+          args_def = {}
+          arg_count.times{ |i| args_def["arg_#{i}"] = -1 }
+          opcode(opcode,"auto_#{opcode}",args_def) { |args|
+            puts "  !!! WARNING: opcode #{opcode} is auto-generated and NOOP"
+          }
+        end
+      end
+
       def self.engine_var_setter(engine_var_name)
         lambda { |args| self.engine_vars.send("#{engine_var_name}=", args.send(engine_var_name)) }
       end

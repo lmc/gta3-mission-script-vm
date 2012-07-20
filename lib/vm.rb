@@ -53,7 +53,7 @@ load "lib/game_objects/cargen.rb"
 load "lib/opcode_dsl.rb"
 load "lib/opcodes.rb"
 
-# (load("lib/vm.rb") && Vm.load_scm("main").run)
+# (load("lib/vm.rb") && Vm.load_scm("main-vc").run)
 
 class Vm
   attr_accessor :memory # ""
@@ -449,6 +449,7 @@ class Vm
   end
 
   def validate_arg(expected_arg_type,arg_type)
+    return true if expected_arg_type == -1 # don't care what the arg type is
     return true if expected_arg_type == true && arg_type == 0x00 # end of variable-length arg list
     return true if expected_arg_type == :string && arg_type > DATA_TYPE_MAX # immediate type-less 8-byte string
     allowable_arg_types = GENERIC_TYPE_SHORTHANDS[expected_arg_type] || [expected_arg_type]
