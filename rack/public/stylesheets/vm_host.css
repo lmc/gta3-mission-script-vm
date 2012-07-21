@@ -26,7 +26,10 @@ span.value     { color: #0074CC; }
 .memory .data_type_4 { color: #0074CC; }
 .memory .data_type_6 { color: #FAA732; }
 
-.threads { height: 1200px; }
+#segment_threads { width: 350px; overflow-x: scroll;}
+table.threads_table { width: auto !important; }
+.threads td.thread { width: 350px; height: 1200px; }
+.threads { }
 .threads tr { color: #888; }
 .threads tr.current { color: #333; }
 .threads .name { width: 3em; text-align: right; padding-right: 1em;  }

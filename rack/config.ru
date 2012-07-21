@@ -13,7 +13,7 @@ def reload!(vm)
   VmHost.new(vm)
 end
 
-@vm = Vm.load_scm("main")
+@vm = Vm.load_scm("main-vc")
 @vm.tick!
 
 @vm_host = reload!(@vm)

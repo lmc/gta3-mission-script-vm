@@ -30,6 +30,7 @@ module Opcodes
 
   opcode("030D", "engine_set_progress_count",      progress_count:int,      &engine_var_setter(:progress_count))
   opcode("0997", "engine_set_respect_count",       respect_count:int,       &engine_var_setter(:respect_count))
+  opcode("02ED", "engine_set_hidden_packages_count", hidden_packages_count:int, &engine_var_setter(:hidden_packages_count))
   opcode("01F0", "engine_set_max_wanted_level",    max_wanted_level:int,    &engine_var_setter(:max_wanted_level))
   opcode("0111", "engine_set_wasted_busted_check", wasted_busted_check:int, &engine_var_setter(:wasted_busted_check))
 

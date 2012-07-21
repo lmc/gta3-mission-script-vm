@@ -56,10 +56,9 @@ load "lib/opcodes.rb"
 # (load("lib/vm.rb") && Vm.load_scm("main").run)
 
 class Vm
-  attr_accessor :memory # ""
+  attr_accessor :memory
 
-  attr_accessor :pc # 0
-  attr_accessor :stack # []
+  attr_accessor :pc
 
   attr_accessor :original_opcode
   attr_accessor :opcode
@@ -68,6 +67,9 @@ class Vm
   attr_accessor :thread_id
   attr_accessor :thread_pcs
   attr_accessor :thread_names
+  attr_accessor :thread_vars
+  attr_accessor :thread_timers
+  attr_accessor :thread_stacks
   attr_accessor :thread_suspended
   attr_accessor :thread_switch_to_id
 
@@ -105,11 +107,13 @@ class Vm
     self.memory = Memory.new(script_binary)
     #self.memory = script_binary.bytes.to_a
     self.pc = 0
-    self.stack = []
 
     self.thread_id = 0
     self.thread_pcs = [0]
     self.thread_names = []
+    self.thread_vars = Array.new { Array.new(32,nil) } # 32 local vars
+    self.thread_timers = Array.new { Array.new(2,nil) } # 2 local timers
+    self.thread_stacks = Array.new { Array.new(8,nil) } # fixed 8-level stack
     self.thread_suspended = false
 
     self.engine_vars = OpenStruct.new

@@ -85,7 +85,7 @@ class VmHost
           )}}
         </tr>
         <tr>
-          <td class="opcode">#{Opcodes.definitions[@vm.opcode][:sym_name] rescue "--"}</td>
+          <td class="opcode"><span class="opcode">#{Opcodes.definitions[@vm.opcode][:nice] rescue "--"}</span></td>
           #{@vm.args.inject("") {|str,(data_type,value)|
           attrs = ""
           value = format_arg(data_type,value)
@@ -100,39 +100,50 @@ class VmHost
             </td>
           )}}
         </tr>
+        <tr>
+          <td class="opcode">#{Opcodes.definitions[@vm.opcode][:sym_name] rescue "--"}</td>
+          #{@vm.args.each_with_index.inject("") {|str,((data_type,value),index)|
+          str << %(
+            <td>
+              <a>
+                #{Opcodes.definitions[@vm.opcode][:args_names][index]}
+              </a>
+            </td>
+          )}}
+        </tr>
       </table>
     HTML
   end
 
   def render_threads
     <<-HTML
-      <table>
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>ID</th>
-            <th>PC</th>
-          </tr>
-        </thead>
-        <tbody>
+      <div style="width:50000px">
+      <table class="threads_table">
+        <tr>
         #{ @vm.thread_pcs.each_with_index.map { |thread_pc,thread_id|
           classes = []
           classes << "current" if thread_id == @vm.thread_id
           %(
-          <tr class="#{classes.join(" ")}">
-            <td class="name">#{@vm.thread_names[thread_id]}</td>
-            <td class="id">#{thread_id}</td>
-            <td class="pc">#{thread_pc}</td>
-          </tr>
+            <td class="thread">
+              <h2>#{thread_id} #{@vm.thread_names[thread_id]}</h2>
+
+              <h2>Local Vars</h2>
+              <table class="local_vars">
+              </table>
+
+              <h2>PC</h2>
+              #{thread_pc}
+            </td>
         )}.join("\n")}
         </tbody>
       </table>
+      </div>
     HTML
   end
 
   def render_memory
     <<-HTML
-      #{memory_view(16,8,43808,true)}
+      #{memory_view(16,8,34336,true)}
     HTML
   end
 
