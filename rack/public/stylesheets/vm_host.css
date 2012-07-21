@@ -1,5 +1,10 @@
 body { zoom: 0.5; }
 
+/* extra bootstrap things */
+.span16 {
+  width: 1240px;
+}
+
 .hl_address.hover { background-color: #f8f !important; }
 
 span.opcode    { color: #5BB75B; }

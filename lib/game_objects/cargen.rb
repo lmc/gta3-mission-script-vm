@@ -11,7 +11,8 @@ class Cargen < GameObject
       alarm_pc: int,
       locked_pc: int,
       delay_min: int,
-      delay_max: int
+      delay_max: int,
+      ttl: int, # how many cars to generate, when 0 = never generate, 101 = always generate
     }
   end
 

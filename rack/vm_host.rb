@@ -245,7 +245,7 @@ class VmHost
             </div>
 
             <div class="row">
-              <div class="span12 well">
+              <div class="span16 well current_instruction">
                 <h1>Instruction</h1>
                 <div id="segment_current_instruction">
                   #{render_current_instruction}

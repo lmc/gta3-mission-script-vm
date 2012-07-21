@@ -146,17 +146,15 @@ module Opcodes
     # TODO: do something with this?
   end
 
-  opcode("014B", "cargen_create", x:float, y:float, z:float, rz:float, model:int, color1:int, color2:int,
+  opcode("014B", "cargen_create", x:float, y:float, z:float, rz:float, car_model:int, color1:int, color2:int,
     force_spawn:bool, alarm_pc:int, locked_pc:int, delay_min:int, delay_max:int, ret_cargen_id:pg_if ) do |args|
-    # TODO: do something with this
-    #allocate!(args.ret_cargen_id,:pg_if,Cargen)
     allocate_game_object!(args.ret_cargen_id,Cargen) do |cargen|
       cargen.assign_from_args(args,without: [:ret_cargen_id])
     end
   end
 
   opcode("014C", "cargen_set_ttl", cargen_id:pg_if, ttl:int ) do |args|
-    # TODO: do something with this
+    self.game_objects[args.cargen_id].ttl = args.ttl
   end
 
   opcode("0929", "extscript_create_on_object", extscript_id:int, model:int,
@@ -221,7 +219,9 @@ module Opcodes
   end
 
   opcode("004D", "if_false_jump", address:int ) do |args|
-    raise InvalidBranchConditionState, "not enough conditional opcodes (allocated: #{self.branch_conditions.size}" if self.branch_conditions.any?(&:nil?)
+    if self.branch_conditions.any?(&:nil?)
+      raise Vm::InvalidBranchConditionState, "not enough conditional opcodes (allocated: #{self.branch_conditions.size})"
+    end
     self.pc = args.address if !self.branch_conditions.all? # all must be true, otherwise jump
     self.branch_conditions = nil
   end

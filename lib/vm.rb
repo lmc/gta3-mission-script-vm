@@ -181,7 +181,6 @@ class Vm
     opcode_start_address = self.pc
 
     disassembly = disassemble_opcode_at(opcode_start_address)
-    puts disassembly.inspect
 
     self.pc += disassembly.flatten.size
 
@@ -206,7 +205,6 @@ class Vm
     rows.times do |index|
       puts dump_memory_at(VARIABLE_STORAGE_AT+(index*width),width)
     end
-    puts dump_memory_at(3530,32)
 
     self.thread_pcs[self.thread_id] = self.pc
     if self.thread_suspended
@@ -423,55 +421,6 @@ class Vm
 
   def read(address,bytes = 1)
     self.memory[(address)...(address+bytes)]
-  end
-
-  # def read!(bytes = 1)
-  #   ret = read(self.pc,bytes)
-  #   self.pc += bytes
-  #   ret
-  # end
-
-  def read_arg!
-    arg_type = read!(1)[0]
-    arg = [arg_type]
-    case arg_type
-    when 0x01 # immediate 32 bit signed int
-      arg << read!(4)
-    when 0x02 # 16-bit global pointer to int/float
-      arg << read!(2)
-    when 0x04 # immediate 8-bit signed int
-      arg << read!(1)
-    when 0x05 # immediate 16-bit signed int 
-      arg << read!(2)
-    when 0x06 # immediate 32-bit float
-      arg << read!(4)
-    when 0x09 # immediate 8-byte string
-      arg << read!(8)
-    when 0x0e # variable-length string
-      string_length = read!(1)[0]
-      arg << read!(string_length)
-    else
-      if arg_type > DATA_TYPE_MAX # immediate type-less 8-byte string
-        arg << read!(7)
-      else
-        raise InvalidDataType, "unknown data type #{arg_type} (#{hex(arg_type)})"
-      end
-    end
-    arg
-  end
-
-  def read_args!
-    arg_def = Opcodes.definitions[opcode]
-    args = []
-    arg_def[:args_count].times do |index|
-      if arg_def[:args_names][index] == :var_args
-        args << read_arg! while read(1)[0] != 0x00
-        args << read!(1)
-      else
-        args << read_arg!
-      end
-    end
-    args
   end
 
   def write_branch_condition!(bool)
