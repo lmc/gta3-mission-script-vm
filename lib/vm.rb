@@ -53,7 +53,7 @@ load "lib/game_objects/cargen.rb"
 load "lib/opcode_dsl.rb"
 load "lib/opcodes.rb"
 
-# (load("lib/vm.rb") && Vm.load_scm("main-vc").run)
+# (load("lib/vm.rb") && Vm.load_scm("main").run)
 
 class Vm
   attr_accessor :memory # ""
@@ -180,22 +180,19 @@ class Vm
 
     opcode_start_address = self.pc
 
-    self.opcode, self.args = read!(2), []
-    self.original_opcode = self.opcode.dup
+    disassembly = disassemble_opcode_at(opcode_start_address)
+    puts disassembly.inspect
 
-    # Conditional opcodes can have the highest bit of the opcode set to 1
-    # So they look like 8038 instead of 0038
-    # This is basically a NOT version of the normal opcode
-    # We should detect this here, set a flag to say the next write_branch_condition call
-    # should be negated, and remove the high bit on the opcode so it calls the "plain" opcode
-    if self.opcode[1] >= NEGATED_OPCODE_MASK
-      self.opcode[1] -= NEGATED_OPCODE_MASK
+    self.pc += disassembly.flatten.size
+
+    self.opcode = disassembly[0]
+    self.args = disassembly[1]
+
+    original_opcode = self.opcode
+    if original_opcode != undo_negated_opcode(self.opcode)
+      self.opcode = undo_negated_opcode(self.opcode)
       self.negated_opcode = true
     end
-
-    raise InvalidOpcode, "#{opcode_nice} not implemented" unless Opcodes.definitions[opcode]
-
-    self.args = read_args!
 
     opcode_prelude = 4
     shim_size = (0)...([opcode,args].flatten.compact.size)
@@ -300,6 +297,90 @@ class Vm
     self.thread_names[self.thread_id]
   end
 
+  # Conditional opcodes can have the highest bit of the opcode set to 1
+  # So they look like 8038 instead of 0038
+  # This is basically a NOT version of the normal opcode
+  # We should detect this here, set a flag to say the next write_branch_condition call
+  # should be negated, and remove the high bit on the opcode so it calls the "plain" opcode
+  def undo_negated_opcode(opcode)
+    good_opcode = opcode
+    good_opcode[1] -= NEGATED_OPCODE_MASK if good_opcode[1] >= NEGATED_OPCODE_MASK
+    good_opcode
+  end
+
+  def disassemble_opcode_at(address)
+    opcode_pointer = address
+    opcode, args = read(opcode_pointer,2), []
+    opcode_pointer += 2
+
+    opcode_for_lookup = undo_negated_opcode(opcode)
+    raise InvalidOpcode, "#{opcode_nice} not implemented" unless Opcodes.definitions[opcode_for_lookup]
+
+    arg_def = Opcodes.definitions[opcode_for_lookup]
+    args = []
+    arg_def[:args_count].times do |index|
+      # var_args is a magic arg name
+      if arg_def[:args_names][index] == :var_args
+
+        # read normal args up until an arg with the data_type 0x00
+        while read(opcode_pointer,1)[0] != 0x00
+          arg = disassemble_opcode_arg_at(opcode_pointer)
+          opcode_pointer += arg.flatten.size
+          args << arg
+        end
+
+        # read the data_type 0x00 in as an arg anyway
+        args << read(opcode_pointer,1)
+        opcode_pointer += 1
+
+      else
+        arg = disassemble_opcode_arg_at(opcode_pointer)
+        opcode_pointer += arg.flatten.size
+        args << arg
+      end
+    end
+
+    [opcode,args]
+  end
+
+  def disassemble_opcode_arg_at(address)
+    arg_type = read(address,1)[0]
+    arg_bytes = bytes_to_read_for_arg_data_type(address)
+    
+    case arg_type
+    when 0x0e
+      [arg_type,read(address + 1,arg_bytes)] # address = data_type, +1 = var string length, +2 = var string start
+    else
+      [arg_type,read(address + 1,arg_bytes)]
+    end
+  end
+
+  def bytes_to_read_for_arg_data_type(address)
+    arg_type = read(address,1)[0]
+    case arg_type
+    when 0x01 # immediate 32 bit signed int
+      4
+    when 0x02 # 16-bit global pointer to int/float
+      2
+    when 0x04 # immediate 8-bit signed int
+      1
+    when 0x05 # immediate 16-bit signed int 
+      2
+    when 0x06 # immediate 32-bit float
+      4
+    when 0x09 # immediate 8-byte string
+      8
+    when 0x0e # variable-length string
+      read(address + 1,1)[0] + 1 #+1 to read the var string length prefix too
+    else
+      if arg_type > DATA_TYPE_MAX # immediate type-less 8-byte string
+        7
+      else
+        raise InvalidDataType, "unknown data type #{arg_type} (#{hex(arg_type)})"
+      end
+    end
+  end
+
   #protected
 
   def allocate_game_object!(address,game_object_class,pointer_type = :pg_if,&block)
@@ -344,11 +425,11 @@ class Vm
     self.memory[(address)...(address+bytes)]
   end
 
-  def read!(bytes = 1)
-    ret = read(self.pc,bytes)
-    self.pc += bytes
-    ret
-  end
+  # def read!(bytes = 1)
+  #   ret = read(self.pc,bytes)
+  #   self.pc += bytes
+  #   ret
+  # end
 
   def read_arg!
     arg_type = read!(1)[0]
@@ -420,7 +501,7 @@ class Vm
     when  0x09 # immediate 8-byte string
       arg_value.to_byte_string.strip_to_null
     when  0x0e # variable-length string
-      arg_value.to_byte_string[1..-1].strip_to_null
+      arg_value.to_byte_string[1..-1]
     else
       if arg_type > DATA_TYPE_MAX # immediate type-less 8-byte string
         [arg_type,arg_value].flatten.to_byte_string.strip_to_null #FIXME: can have random crap after first null byte, cleanup
