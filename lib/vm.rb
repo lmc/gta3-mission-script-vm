@@ -53,10 +53,13 @@ load "lib/game_objects/cargen.rb"
 load "lib/opcode_dsl.rb"
 load "lib/opcodes.rb"
 
-# (load("lib/vm.rb") && Vm.load_scm("main").run)
+# (load("lib/vm.rb") && Vm.load_scm("main-vc").run)
 
 class Vm
   attr_accessor :memory
+
+  attr_accessor :struct_positions
+  attr_accessor :models, :missions
 
   attr_accessor :pc
 
@@ -497,7 +500,55 @@ class Vm
   end
 
   def detect_scm_structures!
-    
+    markers = [ [0x6d,:memory], [0x00,:models], [0x00,:missions] ]
+
+    self.struct_positions = Hash.new { |h,k| h[k] = [] }
+    offset = 0
+
+    markers.each_with_index do |(marker,struct_name),index|
+      
+      jump_opcode = disassemble_opcode_at(offset)
+      marker_at = offset + jump_opcode.flatten.size
+      if read(marker_at,1) != [marker]
+        raise InvalidScmStructure, "Didn't find '#{struct_name}' structure marker '#{marker}' at #{marker_at}"
+      end
+      self.struct_positions[struct_name][0] = marker_at + 1
+
+      struct_end = arg_to_native(*jump_opcode[1][0])
+      jump_opcode = disassemble_opcode_at(struct_end)
+      if jump_opcode[0] != [0x02,0x00] && index != markers.length-1
+        raise InvalidScmStructure, "Didn't find jump after '#{struct_name}' structure at #{struct_end}"
+      end
+      self.struct_positions[struct_name][1] = struct_end
+
+      case struct_name
+      when :models
+        offset = marker_at + 1
+        models_count = arg_to_native(:int32, read(offset,4) )
+        offset += 4
+        self.models = {}
+        models_count.times do |id|
+          self.models[id * -1] = read(offset,24).to_byte_string.strip_to_null
+          offset += 24
+        end
+      when :missions
+        offset = marker_at + 1
+        offset += 8 # crazy padding? [34 1f 03 00 98 7e 00 00]
+        missions_count = arg_to_native(:int32, read(offset,4) )
+        offset += 4
+        self.missions = {}
+        missions_count.times do |id|
+          self.missions[id * -1] = arg_to_native(:int32,read(offset,4))
+          offset += 4
+        end
+        self.struct_positions[:main][0] = offset
+        self.struct_positions[:main][1] = self.missions[0]
+      end
+
+      offset = struct_end
+    end
+
+    true
   end
 
   def build_opcode_map!
@@ -533,6 +584,7 @@ class Vm
     c(type,hex(val))
   end
 
+  class InvalidScmStructure < StandardError; end
   class InvalidOpcode < StandardError; end
   class InvalidOpcodeArgumentType < StandardError; end
   class InvalidDataType < StandardError; end
