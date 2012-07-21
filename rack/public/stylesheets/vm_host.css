@@ -1,8 +1,8 @@
 body { zoom: 0.5; }
 
 /* extra bootstrap things */
-.span16 {
-  width: 1240px;
+.span22 {
+  width: 1800px;
 }
 
 .hl_address.hover { background-color: #f8f !important; }
@@ -37,6 +37,7 @@ table.threads_table { width: auto !important; }
 .threads .pc {  }
 
 .game_objects { height: 400px; }
+.game_objects table tbody { display: block; height: 20em; overflow-y: scroll; }
 .game_objects td.address { width: 5em; text-align: right; }
 .game_objects td.allocation_id { width: 3em; }
 

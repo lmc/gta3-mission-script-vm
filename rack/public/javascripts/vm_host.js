@@ -102,13 +102,18 @@ $(document).ready(function(){
     content: function(){
       $this = $(this);
       var data_type = $this.data("data_type");
+      var variable_label;
       var s = "";
         s += "<dl>";
         s += "<dt>Data type</dt><dd>"+data_type+" "+dt_shorthands[data_type]+"</dd>";
         if($this.data("allocation_id")){
           s += "<dt>Game object</dt><dd>"+$this.data("allocation_id")+"</dd>";
         }
+        if(variable_label = variable_labels[$this.data("address")]){
+          s += "<dt>Label</dt><dd>"+variable_label+"</dd>";
+        }
         s += "</dl>";
+        console.log()
       return s;
     }
   });

@@ -6,6 +6,18 @@ class VmHost
     @vm = vm
     @last_tick_times = []
     @last_exception = nil
+
+    @memory_starts_at = 8
+    @variable_labels = begin
+      labels = {}
+      File.read("data/vc/CustomVariables.ini").each_line do |line|
+        next unless line =~ /\A;?(\d+)=(.+)/
+        var_no, label = *line.scan(/\A;?(\d+)=(.+)/)[0]
+        address = @memory_starts_at + ((var_no.to_i - 2) * 4)
+        labels[address] = label
+      end
+      labels
+    end
   end
 
   def tick(ticks = 1)
@@ -76,6 +88,7 @@ class VmHost
     <<-HTML
       <table class="table table-bordered table-condensed">
         <tr>
+          <th>Bytecode</th>
           <td class="opcode"><span class="opcode">#{hex(@vm.opcode)}</span></td>
           #{@vm.args.inject("") {|str,(data_type,value)| str << %(
             <td>
@@ -85,6 +98,7 @@ class VmHost
           )}}
         </tr>
         <tr>
+          <th>Disassembled</th>
           <td class="opcode"><span class="opcode">#{Opcodes.definitions[@vm.opcode][:nice] rescue "--"}</span></td>
           #{@vm.args.inject("") {|str,(data_type,value)|
           attrs = ""
@@ -101,12 +115,14 @@ class VmHost
           )}}
         </tr>
         <tr>
-          <td class="opcode">#{Opcodes.definitions[@vm.opcode][:sym_name] rescue "--"}</td>
+          <th>Handled As</th>
+          <td class="opcode"><span class="opcode">#{Opcodes.definitions[@vm.opcode][:sym_name] rescue "--"}</span></td>
           #{@vm.args.each_with_index.inject("") {|str,((data_type,value),index)|
           str << %(
             <td>
               <a>
-                #{Opcodes.definitions[@vm.opcode][:args_names][index]}
+                <span class="data_type">#{Opcodes.definitions[@vm.opcode][:args_types][index]}</span>
+                <span class="value">#{Opcodes.definitions[@vm.opcode][:args_names][index]}</span>
               </a>
             </td>
           )}}
@@ -143,7 +159,7 @@ class VmHost
 
   def render_memory
     <<-HTML
-      #{memory_view(16,8,34336,true)}
+      #{memory_view(24,8,34336,true)}
     HTML
   end
 
@@ -206,6 +222,7 @@ class VmHost
 
           <script type="text/javascript">
             var dt_shorthands = #{Vm::TYPE_SHORTHANDS.invert.to_json};
+            var variable_labels = #{@variable_labels.to_json};
           </script>
           <script type="text/javascript" src="/javascripts/jquery.js"></script>
           <script type="text/javascript" src="/javascripts/bootstrap-tooltip.js"></script>
@@ -240,14 +257,14 @@ class VmHost
 
           <div class="row memory_game_objects_current_instruction">
             <div class="row">
-              <div class="column span8 well memory">
+              <div class="column span9 well memory">
                 <h1>Memory</h1>
                 <div id="segment_memory">
                   #{render_memory}
                 </div>
               </div>
 
-              <div class="column span8 well game_objects">
+              <div class="column span9 well game_objects">
                 <h1>Game objects</h1>
                 <div id="segment_game_objects">
                   #{render_game_objects}
@@ -256,7 +273,7 @@ class VmHost
             </div>
 
             <div class="row">
-              <div class="span16 well current_instruction">
+              <div class="span22 well current_instruction">
                 <h1>Instruction</h1>
                 <div id="segment_current_instruction">
                   #{render_current_instruction}
@@ -284,11 +301,12 @@ class VmHost
         address = row_address + i
 
         if @vm.allocations[address]
-          bytes_left = Vm::TYPE_SIZES[ @vm.allocations[address][0] ]
+          #bytes_left = Vm::TYPE_SIZES[ @vm.allocations[address][0] ]
+          bytes_left = 4 # vars in memory are always 32-bit ints/floats?
           classes = "allocated hl_address hl_address_#{address} data_type_#{@vm.allocations[address][0]} allocation_id_#{@vm.allocations[address][1]}"
           bytes = @vm.read(address,bytes_left)
           native = @vm.arg_to_native(@vm.allocations[address][0],bytes)
-          tag_open = %(<a class="#{classes}" href="#" data-native="#{native}" data-bytes="#{hex(bytes)}" data-data_type="#{@vm.allocations[address][0]}" data-allocation_id="#{@vm.allocations[address][1]}">)
+          tag_open = %(<a class="#{classes}" href="#" data-native="#{native}" data-bytes="#{hex(bytes)}" data-data_type="#{@vm.allocations[address][0]}" data-allocation_id="#{@vm.allocations[address][1]}" data-address="#{address}">)
           s << tag_open
         elsif i == 0 && bytes_left > 0
           s << tag_open
