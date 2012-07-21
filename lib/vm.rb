@@ -287,7 +287,7 @@ class Vm
   include Opcodes
 
   def inspect
-    vars_to_inspect = [:pc,:opcode,:opcode_nice,:args,:thread_id,:thread_pcs,:stack,:branch_conditions]
+    vars_to_inspect = [:pc,:opcode,:opcode_nice,:args,:thread_id,:thread_pcs,:branch_conditions]
     vars_to_inspect += instance_variables.map { |iv| iv.to_s.gsub(/@/,"").to_sym }
     vars_to_inspect -= [:memory]
     vars_to_inspect.uniq!
@@ -506,7 +506,7 @@ class Vm
     offset = 0
 
     markers.each_with_index do |(marker,struct_name),index|
-      
+
       jump_opcode = disassemble_opcode_at(offset)
       marker_at = offset + jump_opcode.flatten.size
       if read(marker_at,1) != [marker]
@@ -533,7 +533,14 @@ class Vm
         end
       when :missions
         offset = marker_at + 1
-        offset += 8 # crazy padding? [34 1f 03 00 98 7e 00 00]
+
+        missions_start_at = arg_to_native(:int32,read(offset,4))
+        offset += 4
+
+        # maybe? it's somewhat close to the size of the memory space
+        memory_allocated = arg_to_native(:int32,read(offset,4))
+        offset += 4
+
         missions_count = arg_to_native(:int32, read(offset,4) )
         offset += 4
         self.missions = {}
@@ -547,7 +554,7 @@ class Vm
 
       offset = struct_end
     end
-
+    
     true
   end
 
