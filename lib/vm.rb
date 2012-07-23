@@ -50,6 +50,7 @@ load "lib/game_objects/player.rb"
 load "lib/game_objects/actor.rb"
 load "lib/game_objects/pickup.rb"
 load "lib/game_objects/cargen.rb"
+load "lib/game_objects/mapobject.rb"
 load "lib/opcode_dsl.rb"
 load "lib/opcodes.rb"
 
@@ -94,6 +95,7 @@ class Vm
   attr_accessor :opcode_map
 
   attr_accessor :tick_count
+  attr_accessor :time
   attr_accessor :dirty
 
   DATA_TYPE_MAX = 31
@@ -127,6 +129,7 @@ class Vm
     self.game_objects = {}
 
     self.tick_count = 0
+    self.time = 0 #microseconds
     self.dirty = {}
 
     detect_scm_structures!
@@ -141,43 +144,10 @@ class Vm
     while gets; tick!; end
   end
 
-  def dump_memory_at(address,size = 16,previous_context = 0,shim_range = nil,shim = nil) #yield(buffer)
-    dump = ""
-    offset = address-previous_context
-    same_colour_left = -1
-    while offset < address+size-previous_context
-
-      if shim_range && offset == (address+shim_range.begin)
-        dump << shim
-        dump << " " unless [2].include?(shim_range.end) #why? no idea
-        offset = (address+shim_range.end)
-        next
-      end
-
-      if self.allocations[offset]
-        alloc_colour = COLORS[ self.allocations[offset][0] ] || DEFAULT_COLOR
-        same_colour_left = TYPE_SIZES[ self.allocations[offset][0] ]
-        dump << "\e[#{alloc_colour}m"
-      end
-
-      dump << hex(self.memory[offset])
-      same_colour_left -= 1
-
-      if same_colour_left == 0
-        dump << "\e[0m"
-      end
-
-      dump << " "
-      offset += 1
-    end
-
-    yield(dump) if block_given?
-
-    "#{address.to_s.rjust(8,"o")} - #{dump}"
-  end
-
   def tick!
     self.tick_count += 1
+    self.time += 1000 # 1ms, 1000 microseconds
+
     reset_dirty_state
     
     mem_width = 32#40
@@ -576,6 +546,40 @@ class Vm
     DIRTY_STATES.each { |state| self.dirty[state] = false }
   end
 
+  def dump_memory_at(address,size = 16,previous_context = 0,shim_range = nil,shim = nil) #yield(buffer)
+    dump = ""
+    offset = address-previous_context
+    same_colour_left = -1
+    while offset < address+size-previous_context
+
+      if shim_range && offset == (address+shim_range.begin)
+        dump << shim
+        dump << " " unless [2].include?(shim_range.end) #why? no idea
+        offset = (address+shim_range.end)
+        next
+      end
+
+      if self.allocations[offset]
+        alloc_colour = COLORS[ self.allocations[offset][0] ] || DEFAULT_COLOR
+        same_colour_left = TYPE_SIZES[ self.allocations[offset][0] ]
+        dump << "\e[#{alloc_colour}m"
+      end
+
+      dump << hex(self.memory[offset])
+      same_colour_left -= 1
+
+      if same_colour_left == 0
+        dump << "\e[0m"
+      end
+
+      dump << " "
+      offset += 1
+    end
+
+    yield(dump) if block_given?
+
+    "#{address.to_s.rjust(8,"o")} - #{dump}"
+  end
 
   def hex(array_of_bytes)
     array_of_bytes = [array_of_bytes] unless array_of_bytes.is_a?(Array)

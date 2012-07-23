@@ -138,6 +138,18 @@ module Opcodes
     allocate!(args.ret_pickup_id,:pg_if,Pickup)
   end
 
+
+  opcode("029B", "mapobject_create", model:int, x:float, y:float, z:float, ret_mapobject_id:pg_if) do |args|
+    allocate_game_object!(args.ret_mapobject_id,Mapobject) do |mapobject|
+      mapobject.assign_from_args(args,without: [:ret_mapobject_id])
+    end
+  end
+
+  opcode("01C7", "mapobject_cleanup_exclude", mapobject_id:pg_if) do |args|
+    # TODO: do something with this
+  end
+
+
   opcode("0180", "engine_bind_onmission_var", ret_address:pg_if ) do |args|
     self.onmission_address = args.ret_address
     allocate!(args.ret_address,:int32,0)
