@@ -63,10 +63,29 @@ class VmHost
   def render_vm_controls
     <<-HTML
       <form action="/tick" method="get" class="form-inline" id="tick_form">
-        <label>Number of ticks</label>
-        <input name="ticks" value="1" type="text" class="span1" />
-        <button type="submit" class="btn">Tick!</button>
+        <table class="ticks_time table table-bordered table-condensed">
+          <tr>
+            <th>Ticks</th>
+            <td>#{@vm.tick_count}</td>
+            <td><input name="ticks" value="1" type="text" class="span1" /></td>
+          </tr>
+          <tr>
+            <th>Time</th>
+            <td>#{@vm.time}</td>
+            <td> </td>
+          </tr>
+        </table>
+
+        <table class="branch_conditions table table-bordered table-condensed">
+          <tr>
+            <th>Branch Conds</th>
+            <td>#{@vm.branch_conditions.inspect}</td>
+          </tr>
+        </table>
+        
+        <button type="submit" class="btn">Tick</button>
       </form>
+
       <form action="/reset" method="get" class="form-inline">
         <button type="submit" class="btn btn-danger">Reset</button>
       </form>

@@ -45,14 +45,14 @@ COLORS = {
 }
 DEFAULT_COLOR = "7"
 
-load "lib/game_objects/game_object.rb"
-load "lib/game_objects/player.rb"
-load "lib/game_objects/actor.rb"
-load "lib/game_objects/pickup.rb"
-load "lib/game_objects/cargen.rb"
-load "lib/game_objects/mapobject.rb"
-load "lib/opcode_dsl.rb"
-load "lib/opcodes.rb"
+load "game_objects/game_object.rb"
+load "game_objects/player.rb"
+load "game_objects/actor.rb"
+load "game_objects/pickup.rb"
+load "game_objects/cargen.rb"
+load "game_objects/mapobject.rb"
+load "opcode_dsl.rb"
+load "opcodes.rb"
 
 # (load("lib/vm.rb") && Vm.load_scm("main-vc").run)
 
@@ -108,7 +108,7 @@ class Vm
     new( File.read("#{`pwd`.strip}/#{scm}.scm") )
   end
 
-  def initialize(script_binary)
+  def initialize(script_binary,options = {})
     self.memory = Memory.new(script_binary)
     #self.memory = script_binary.bytes.to_a
     self.pc = 0
