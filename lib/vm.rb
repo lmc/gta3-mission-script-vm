@@ -146,76 +146,22 @@ class Vm
   end
 
   def tick!
-    self.tick_count += 1
-    self.time += 1000 # 1ms, 1000 microseconds
-
+    manage_time!
     reset_dirty_state
-    
-    mem_width = 32#40
 
-    self.negated_opcode = false
-    self.pc = self.thread_pcs[self.thread_id]
-
-    opcode_start_address = self.pc
-
-    disassembly = disassemble_opcode_at(opcode_start_address)
-
-    self.pc += disassembly.flatten.size
-
-    self.opcode = disassembly[0]
-    self.args = disassembly[1]
-
-    original_opcode = self.opcode
-    if original_opcode != undo_negated_opcode(self.opcode)
-      self.opcode = undo_negated_opcode(self.opcode)
-      self.negated_opcode = true
-    end
-
-    opcode_prelude = 4
-    shim_size = (0)...([opcode,args].flatten.compact.size)
-    shim = "#{ch(OPCODE,original_opcode)} #{self.args.map{|a| "#{ch(TYPE,a[0])} #{a[1] ? ch(VALUE,a[1]) : '00'}" }.join(" ")}"
-    puts " thread #{self.thread_id.to_s.rjust(2," ")} @ #{opcode_start_address.to_s.rjust(8,"0")} v (threadname:#{(self.thread_names[self.thread_id] || "-")} branch_conditions:#{self.branch_conditions.inspect} negated_opcode:#{self.negated_opcode.inspect})"
-    puts dump_memory_at(opcode_start_address,mem_width,opcode_prelude,shim_size,shim)
-
+    prepare_opcode!
+    inspect_opcode
     execute!
 
-    width,rows = mem_width, 0
-    rows.times do |index|
-      puts dump_memory_at(VARIABLE_STORAGE_AT+(index*width),width)
-    end
-
-    self.thread_pcs[self.thread_id] = self.pc
-    if self.thread_suspended
-      puts "  suspended"
-      until self.thread_switch_to_id && self.thread_pcs[self.thread_switch_to_id]
-        self.thread_switch_to_id = (self.thread_id + 1) % self.thread_pcs.size
-      end
-      self.thread_suspended = false
-    end
-    if self.thread_switch_to_id
-      puts " switching to thread #{self.thread_switch_to_id}"
-      self.thread_id = self.thread_switch_to_id
-      self.thread_switch_to_id = false
-    end
+    inspect_memory
+    manage_threads!
 
     self.dirty[:threads] = true
     self.dirty[:game_objects] = self.game_objects.values.any?(&:dirty_check!)
 
     puts; true
   rescue => ex
-    self.pc -= 2 if [InvalidOpcode].include?(ex.class) #rewind so we get the opcode in the dump
-    puts
-    puts "!!! #{ex.class.name}: #{ex.message}"
-    puts "VM state:"
-    puts "#{self.inspect}"
-    puts
-    puts "Dump at pc:"
-    puts dump_memory_at(pc)
-    puts
-    puts "Backtrace:"
-    puts ex.backtrace.reject{ |l| l =~ %r{(irb_binding)|(bin/irb:)|(ruby/1.9.1/irb)} }.join("\n")
-    puts
-    raise ex
+    handle_vm_exception(ex)
   end
 
   def execute!
@@ -253,6 +199,82 @@ class Vm
     puts "  #{opcode_method}_#{definition[:sym_name]}(#{nice_args.join(',')})"
     
     send(opcode_method,args_helper)
+  end
+
+  def manage_time!
+    self.tick_count += 1
+    self.time += 1000 # 1ms, 1000 microseconds
+  end
+
+  def prepare_opcode!
+    self.negated_opcode = false
+    self.pc = self.thread_pcs[self.thread_id]
+
+    opcode_start_address = self.pc
+
+    disassembly = disassemble_opcode_at(opcode_start_address)
+
+    self.pc += disassembly.flatten.size
+
+    self.opcode = disassembly[0]
+    self.args = disassembly[1]
+
+    original_opcode = self.opcode
+    if original_opcode != undo_negated_opcode(self.opcode)
+      self.opcode = undo_negated_opcode(self.opcode)
+      self.negated_opcode = true
+    end
+  end
+
+  def inspect_opcode
+    original_opcode = self.opcode
+    original_opcode[0] += NEGATED_OPCODE_MASK if self.negated_opcode
+    opcode_start_address = self.thread_pcs[self.thread_id]
+    mem_width = 32#40
+    opcode_prelude = 4
+    shim_size = (0)...([opcode,args].flatten.compact.size)
+    shim = "#{ch(OPCODE,original_opcode)} #{self.args.map{|a| "#{ch(TYPE,a[0])} #{a[1] ? ch(VALUE,a[1]) : '00'}" }.join(" ")}"
+    puts " thread #{self.thread_id.to_s.rjust(2," ")} @ #{opcode_start_address.to_s.rjust(8,"0")} v (threadname:#{(self.thread_names[self.thread_id] || "-")} branch_conditions:#{self.branch_conditions.inspect} negated_opcode:#{self.negated_opcode.inspect})"
+    puts dump_memory_at(opcode_start_address,mem_width,opcode_prelude,shim_size,shim)
+  end
+
+  def inspect_memory
+    width,rows = 32, 0
+    rows.times do |index|
+      puts dump_memory_at(VARIABLE_STORAGE_AT+(index*width),width)
+    end
+  end
+
+  def manage_threads!
+    self.thread_pcs[self.thread_id] = self.pc
+    if self.thread_suspended
+      puts "  suspended"
+      until self.thread_switch_to_id && self.thread_pcs[self.thread_switch_to_id]
+        self.thread_switch_to_id = (self.thread_id + 1) % self.thread_pcs.size
+      end
+      self.thread_suspended = false
+    end
+    if self.thread_switch_to_id
+      puts " switching to thread #{self.thread_switch_to_id}"
+      self.thread_id = self.thread_switch_to_id
+      self.thread_switch_to_id = false
+    end
+  end
+
+  def handle_vm_exception(ex)
+    self.pc -= 2 if [InvalidOpcode].include?(ex.class) #rewind so we get the opcode in the dump
+    puts
+    puts "!!! #{ex.class.name}: #{ex.message}"
+    puts "VM state:"
+    puts "#{self.inspect}"
+    puts
+    puts "Dump at pc:"
+    puts dump_memory_at(pc)
+    puts
+    puts "Backtrace:"
+    puts ex.backtrace.reject{ |l| l =~ %r{(irb_binding)|(bin/irb:)|(ruby/1.9.1/irb)} }.join("\n")
+    puts
+    raise ex
   end
 
   include Opcodes

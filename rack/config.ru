@@ -7,8 +7,6 @@ require 'benchmark'
 use Rack::Static, :urls => ["/images","/javascripts","/stylesheets"], :root => "rack/public"
 use Rack::ContentLength
 
-puts "!!"
-
 should_reload = true
 
 def reload!(vm)
@@ -22,7 +20,6 @@ end
 @vm_host = reload!(@vm)
 
 app = proc do |env|
-  puts env.inspect
   @vm_host = reload!(@vm) if should_reload
   case env["PATH_INFO"]
   when %r{/\A/disassembly/(\d+)/(\d+)}
