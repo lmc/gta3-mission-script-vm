@@ -1,10 +1,13 @@
 #\ -w -p 8765
-load "./lib/vm.rb"
+$: << "./lib"
+require "vm"
 require 'cgi'
 require 'benchmark'
 #use Rack::Reloader, 0
 use Rack::Static, :urls => ["/images","/javascripts","/stylesheets"], :root => "rack/public"
 use Rack::ContentLength
+
+puts "!!"
 
 should_reload = true
 
@@ -19,8 +22,9 @@ end
 @vm_host = reload!(@vm)
 
 app = proc do |env|
+  puts env.inspect
   @vm_host = reload!(@vm) if should_reload
-  case env["REQUEST_URI"]
+  case env["PATH_INFO"]
   when %r{/\A/disassembly/(\d+)/(\d+)}
     #TODO: refactor VM so we can easily get disassembly around a specific address (cache? vanilla script doesn't do self-modifying code)
     # UI panels: memory viewer, disassembly viewer, can click on addresses to view in memory viewer, can shift-click to view in disassembly viewer

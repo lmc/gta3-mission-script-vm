@@ -45,6 +45,7 @@ COLORS = {
 }
 DEFAULT_COLOR = "7"
 
+$: << "./lib"
 load "game_objects/game_object.rb"
 load "game_objects/player.rb"
 load "game_objects/actor.rb"

@@ -278,8 +278,10 @@ class VmHost
             <div class="row">
               <div class="column span9 well memory">
                 <h1>Memory</h1>
-                <div id="segment_memory">
-                  #{render_memory}
+                <div>
+                  <table><tbody id="segment_memory">
+                    #{render_memory}
+                  </tbody></table>
                 </div>
               </div>
 
@@ -308,7 +310,7 @@ class VmHost
   end
 
   def memory_view(cols = 32,start_at = 8,end_at = 43808,skip_empties = false)
-    str = "<table><tbody>"
+    str = ""
     tag_open = ""
     bytes_left = -1
     empty_row = Array.new(cols,0)
@@ -347,7 +349,7 @@ class VmHost
         </tr>
       )
     end
-    str << "</tbody></table>"
+    str << ""
     str
   end
 

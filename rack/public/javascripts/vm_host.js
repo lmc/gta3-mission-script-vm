@@ -1,9 +1,9 @@
 $(document).ready(function(){
   
-  $('#tick_form').submit(function(){
+  $('#tick_form').live("submit",function(){
     $.get("/tick",function(response){
+
       $.each(response.segments,function(segment_id,html){
-        //var element = $('#segment_'+segment_id);
         var element = document.getElementById("segment_"+segment_id);
         if(element){
           element.innerHTML = html;
@@ -11,7 +11,11 @@ $(document).ready(function(){
           //alert("No element for segment: #segment_"+segment_id);
           alert("No element for segment: "+segment_id);
         }
-      })
+        if(segment_id == "memory"){
+          init_memory_features();
+        }
+      });
+
     })
     return false;
   });
@@ -96,26 +100,29 @@ $(document).ready(function(){
     console.log(row[0].render_target);
   };
 
-  $('.memory table a.allocated').popover({
-    placement: "top",
-    title: function(){ return $(this).data("native"); },
-    content: function(){
-      $this = $(this);
-      var data_type = $this.data("data_type");
-      var variable_label;
-      var s = "";
-        s += "<dl>";
-        s += "<dt>Data type</dt><dd>"+data_type+" "+dt_shorthands[data_type]+"</dd>";
-        if($this.data("allocation_id")){
-          s += "<dt>Game object</dt><dd>"+$this.data("allocation_id")+"</dd>";
-        }
-        if(variable_label = variable_labels[$this.data("address")]){
-          s += "<dt>Label</dt><dd>"+variable_label+"</dd>";
-        }
-        s += "</dl>";
-        console.log()
-      return s;
-    }
-  });
+  var init_memory_features = function(){
+    $('.memory table a.allocated').popover({
+      placement: "top",
+      title: function(){ return $(this).data("native"); },
+      content: function(){
+        $this = $(this);
+        var data_type = $this.data("data_type");
+        var variable_label;
+        var s = "";
+          s += "<dl>";
+          s += "<dt>Data type</dt><dd>"+data_type+" "+dt_shorthands[data_type]+"</dd>";
+          if($this.data("allocation_id")){
+            s += "<dt>Game object</dt><dd>"+$this.data("allocation_id")+"</dd>";
+          }
+          if(variable_label = variable_labels[$this.data("address")]){
+            s += "<dt>Label</dt><dd>"+variable_label+"</dd>";
+          }
+          s += "</dl>";
+          console.log()
+        return s;
+      }
+    });
+  };
+  init_memory_features();
 
 });
