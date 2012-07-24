@@ -146,15 +146,41 @@ class Vm
   end
 
   def tick!
-    manage_time!
+    traditional_tick = false
+
+    # have to at least set up the initial tick
+    if !traditional_tick && self.tick_count == 0
+      manage_time!
+
+      prepare_opcode!
+      inspect_opcode
+      return
+    end
+
     reset_dirty_state
+    # reads opcode, executes opcode, returns afterwards
+    if traditional_tick
+      manage_time!
 
-    prepare_opcode!
-    inspect_opcode
-    execute!
+      prepare_opcode!
+      inspect_opcode
+      execute!
 
-    inspect_memory
-    manage_threads!
+      inspect_memory
+      manage_threads!
+    # execute pending opcode, prepare next opcode, return so vm state can be
+    # manipulated for next tick! where it will be executed
+    else
+      execute!
+
+      inspect_memory
+      manage_threads!
+
+      manage_time!
+
+      prepare_opcode!
+      inspect_opcode
+    end
 
     self.dirty[:threads] = true
     self.dirty[:game_objects] = self.game_objects.values.any?(&:dirty_check!)
