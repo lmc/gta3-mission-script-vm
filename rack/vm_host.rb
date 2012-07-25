@@ -176,9 +176,10 @@ class VmHost
     HTML
   end
 
+  #memory_view(24,8,34336,true)
   def render_memory
     <<-HTML
-      #{memory_view(24,8,34336,true)}
+      #{memory_view(24,0,@vm.struct_positions[:memory][1],false)}
     HTML
   end
 
@@ -309,16 +310,26 @@ class VmHost
     HTML
   end
 
+  # TODO:
+  # mark each row of memory as dirty
+  # load in memory initially over ajax to avoid lag
+  # update memory over ajax, only when row is dirty
   def memory_view(cols = 32,start_at = 8,end_at = 43808,skip_empties = false)
     str = ""
+    puts Benchmark.measure {
     tag_open = ""
     bytes_left = -1
     empty_row = Array.new(cols,0)
-    @vm.memory[start_at...end_at].each_slice(cols).each_with_index do |row,index|
+    mem_address = start_at
+    row_index = 0
+    while mem_address <= end_at
+      #row = @vm.memory[mem_address..(mem_address+cols)]
+      row = @vm.memory.old_read(mem_address..(mem_address+cols))
       next if skip_empties && row == empty_row
-      row_address = start_at + (index * cols)
-      mem_hex = row.map.each_with_index{ |b,i|
-        s = ""
+      row_address = start_at + (row_index * cols)
+      mem_hex = ""
+      str << %(<tr><td class="address">#{row_address}</td><td>)
+      row.bytes.each_with_index{ |b,i|
         address = row_address + i
 
         if @vm.allocations[address]
@@ -328,28 +339,25 @@ class VmHost
           bytes = @vm.read(address,bytes_left)
           native = @vm.arg_to_native(@vm.allocations[address][0],bytes)
           tag_open = %(<a class="#{classes}" href="#" data-native="#{native}" data-bytes="#{hex(bytes)}" data-data_type="#{@vm.allocations[address][0]}" data-allocation_id="#{@vm.allocations[address][1]}" data-address="#{address}">)
-          s << tag_open
+          str << tag_open
         elsif i == 0 && bytes_left > 0
-          s << tag_open
+          str << tag_open
         end
 
         bytes_left -= 1
-        s << %(<span class="address_#{address}">) << hex(b) << %(</span>)
+        str << %(<span class="address_#{address}">) << hex(b) << %(</span>)
 
         if bytes_left == 0 || bytes_left > 0 && i == cols-1
-          s << "</a>"
+          str << "</a>"
         end
 
-        s << " "
-      }.join('')
-      str << %(
-        <tr>
-          <td class="address">#{row_address}</td>
-          <td>#{mem_hex}</td>
-        </tr>
-      )
+        str << " "
+      }
+      str << %(</td></tr>\n)
+      mem_address += cols
+      row_index += 1
     end
-    str << ""
+    }
     str
   end
 

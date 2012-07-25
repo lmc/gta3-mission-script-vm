@@ -658,8 +658,13 @@ class Memory < String
     self.force_encoding("ASCII-8BIT")
   end
 
+  alias_method :"old_read", :"[]"
   def [](args = nil)
     super.bytes.to_a
+  end
+
+  def raw_read(*args)
+    old_read(*args)
   end
 
   def []=(pos,args)
