@@ -97,7 +97,7 @@ class Vm
 
   attr_accessor :tick_count
   attr_accessor :time
-  attr_accessor :dirty
+  attr_accessor :dirty, :dirty_memory_addresses
 
   DATA_TYPE_MAX = 31
   VARIABLE_STORAGE_AT = 8
@@ -441,8 +441,9 @@ class Vm
   end
 
   def write!(address,bytes,byte_array)
-    self.memory[(address)...(address+bytes)] = byte_array[0...bytes]
-    self.dirty[:memory] = true
+    memory_range = (address)...(address+bytes)
+    self.memory[memory_range] = byte_array[0...bytes]
+    self.dirty_memory_addresses += memory_range.to_a
   end
 
   def read(address,bytes = 1)
@@ -593,6 +594,7 @@ class Vm
 
   def reset_dirty_state
     DIRTY_STATES.each { |state| self.dirty[state] = false }
+    self.dirty_memory_addresses = []
   end
 
   def dump_memory_at(address,size = 16,previous_context = 0,shim_range = nil,shim = nil) #yield(buffer)

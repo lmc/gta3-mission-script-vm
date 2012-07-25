@@ -11,10 +11,13 @@ $(document).ready(function(){
           //alert("No element for segment: #segment_"+segment_id);
           alert("No element for segment: "+segment_id);
         }
-        if(segment_id == "memory"){
-          init_memory_features();
-        }
       });
+      console.log(response.dirty_memory_addresses);
+      $.each(response.dirty_memory_addresses,function(_i,dirty_mem){
+        var dirty_row = $(".memory_row_address_"+dirty_mem[0]);
+        dirty_row.replaceWith(dirty_mem[1]);
+      });
+      init_memory_features();
 
     })
     return false;

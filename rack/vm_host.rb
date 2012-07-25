@@ -8,6 +8,7 @@ class VmHost
     @last_exception = nil
 
     @memory_starts_at = 8
+    @memory_view_width = 24
     @variable_labels = begin
       labels = {}
       File.read("data/vc/CustomVariables.ini").each_line do |line|
@@ -53,11 +54,18 @@ class VmHost
   def render_json
     segments = [:stats,:current_instruction]
     segments += @vm.dirty.select { |k,v| v == true }.keys
-    puts segments.inspect
     response = {
-      segments: Hash[ segments.map { |segment| [segment,send("render_#{segment}")] } ]
+      segments: Hash[ segments.map { |segment| [segment,send("render_#{segment}")] } ],
+      dirty_memory_addresses: render_json_dirty_memory_addresses
     }
     [200, {"Content-Type" => "application/json"}, [response.to_json]]
+  end
+  def render_json_dirty_memory_addresses
+    @vm.dirty_memory_addresses.map do |address|
+      row_address = address - (address % @memory_view_width)
+    end.uniq.map do |row_address|
+      [row_address,memory_view(@memory_view_width,row_address,row_address+@memory_view_width,false)]
+    end
   end
 
   def render_vm_controls
@@ -314,7 +322,8 @@ class VmHost
   # mark each row of memory as dirty
   # load in memory initially over ajax to avoid lag
   # update memory over ajax, only when row is dirty
-  def memory_view(cols = 32,start_at = 8,end_at = 43808,skip_empties = false)
+  def memory_view(cols = nil,start_at = 8,end_at = 43808,skip_empties = false)
+    cols = @memory_view_width
     str = ""
     puts Benchmark.measure {
     tag_open = ""
@@ -324,11 +333,11 @@ class VmHost
     row_index = 0
     while mem_address <= end_at
       #row = @vm.memory[mem_address..(mem_address+cols)]
-      row = @vm.memory.old_read(mem_address..(mem_address+cols))
+      row = @vm.memory.raw_read(mem_address..(mem_address+cols))
       next if skip_empties && row == empty_row
       row_address = start_at + (row_index * cols)
       mem_hex = ""
-      str << %(<tr><td class="address">#{row_address}</td><td>)
+      str << %(<tr class="memory_row_address_#{row_address}"><td class="address">#{row_address}</td><td>)
       row.bytes.each_with_index{ |b,i|
         address = row_address + i
 
