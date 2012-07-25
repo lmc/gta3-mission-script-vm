@@ -131,11 +131,11 @@ class VmHost
           attrs = ""
           value = format_arg(data_type,value)
           if data_type == TYPE_SHORTHANDS[:pg_if]
-            attrs << %(href="#" class="hl_address hl_address_#{value}")
+            attrs << %(class="hl_address hl_address_#{value}")
           end
           str << %(
             <td #{attrs}>
-              <a>
+              <a href="#">
                 #{value}
               </a>
             </td>
@@ -354,7 +354,7 @@ class VmHost
         end
 
         bytes_left -= 1
-        str << %(<span class="address_#{address}">) << hex(b) << %(</span>)
+        str << %(<span class="address_#{address} hl_address hl_address_#{address}">) << hex(b) << %(</span>)
 
         if bytes_left == 0 || bytes_left > 0 && i == cols-1
           str << "</a>"

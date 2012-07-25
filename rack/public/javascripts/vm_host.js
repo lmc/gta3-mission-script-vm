@@ -24,24 +24,30 @@ $(document).ready(function(){
   });
 
 
-  $('.hl_address').live("mouseover",function(ev){
-    var element = ev.target;
-    var address = element.className.match(/hl_address_(\\d+)/);
-    if(!address) return;
-    address = address[0];
-    var matched = $('.hl_address_'+address);
-    matched.push(element);
-    matched.addClass("hover");
-  });
+  // $('.hl_address').live("mouseover",function(ev){
+  //   var element = ev.target;
+  //   var address = element.className.match(/hl_address_(\d+)/);
+  //   if(!address) return;
+  //   address = address[1];
+  //   var matched = $('.hl_address_'+address);
+  //   matched.addClass("hover");
+  // });
 
-  $('.hl_address').live("mouseout", function(ev){
-    var element = ev.target;
-    var address = element.className.match(/hl_address_(\\d+)/);
-    if(!address) return;
-    address = address[0];
-    var matched = $('.hl_address_'+address);
-    matched.push(element);
-    matched.removeClass("hover");
+  // $('.hl_address').live("mouseout", function(ev){
+  //   var element = ev.target;
+  //   var address = element.className.match(/hl_address_(\d+)/);
+  //   if(!address) return;
+  //   address = address[1];
+  //   var matched = $('.hl_address_'+address);
+  //   matched.removeClass("hover");
+  // });
+
+  $('.hl_address a').live("click", function(ev){
+    var element = $(ev.target);
+    var address = element.parent('.hl_address')[0].className.match(/hl_address_(\d+)/)[1];
+    var memory_element = $('#segment_memory .address_'+address);
+    console.log('#segment_memory .address_'+address);
+    memory_element[0].scrollIntoView();
   });
 
 

@@ -4,8 +4,7 @@ body { zoom: 0.5; }
 .span22 {
   width: 1800px;
 }
-
-.hl_address.hover { background-color: #f8f !important; }
+.hl_address.hover { color: #f8f !important; }
 
 span.opcode    { color: #5BB75B; }
 span.data_type { color: #49AFCD; }
