@@ -64,7 +64,7 @@ class VmHost
     @vm.dirty_memory_addresses.map do |address|
       row_address = address - (address % @memory_view_width)
     end.uniq.map do |row_address|
-      [row_address,memory_view(@memory_view_width,row_address,row_address+@memory_view_width,false)]
+      [row_address,memory_view(@memory_view_width,row_address,row_address+@memory_view_width-1,false)]
     end
   end
 
@@ -333,7 +333,7 @@ class VmHost
     row_index = 0
     while mem_address <= end_at
       #row = @vm.memory[mem_address..(mem_address+cols)]
-      row = @vm.memory.raw_read(mem_address..(mem_address+cols))
+      row = @vm.memory.raw_read(mem_address...(mem_address+cols))
       next if skip_empties && row == empty_row
       row_address = start_at + (row_index * cols)
       mem_hex = ""
