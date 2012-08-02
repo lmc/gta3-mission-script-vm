@@ -52,7 +52,7 @@ class VmHost
   end
 
   def render_json
-    segments = [:stats,:current_instruction]
+    segments = [:stats]
     segments += @vm.dirty.select { |k,v| v == true }.keys
     response = {
       segments: Hash[ segments.map { |segment| [segment,send("render_#{segment}")] } ],
@@ -158,15 +158,32 @@ class VmHost
     HTML
   end
 
+=begin
+  thread attributes
+  pc
+  base_pc - used as base for local addresses in extscripts/missions
+  name
+  16/32 local variables
+  2 timers
+  mission flag
+  wakeup time
+  per-thread conditions,stacks(depth=8)
+  tickboxes to show:
+    local vars
+    stacks
+    conditions
+    disassembly rows:
+      bytecode
+      disassembled
+      handled as (ruby)
+=end
   def render_threads
     <<-HTML
-      <div style="width:50000px">
-      <table class="threads_table">
-        <tr>
         #{ @vm.thread_pcs.each_with_index.map { |thread_pc,thread_id|
           classes = []
           classes << "current" if thread_id == @vm.thread_id
           %(
+            <tr>
             <td class="thread">
               <h2>#{thread_id} #{@vm.thread_names[thread_id]}</h2>
 
@@ -177,10 +194,8 @@ class VmHost
               <h2>PC</h2>
               #{thread_pc}
             </td>
+            </tr>
         )}.join("\n")}
-        </tbody>
-      </table>
-      </div>
     HTML
   end
 
@@ -276,12 +291,14 @@ class VmHost
             </div>
           </div>
 
+          <!--
           <div class="column span4 offset1 well threads">
             <h1>Threads</h1>
             <div class="threads_holder span4" id="segment_threads">
               #{render_threads}
             </div>
           </div>
+          -->
 
           <div class="row memory_game_objects_current_instruction">
             <div class="row">
@@ -304,9 +321,13 @@ class VmHost
 
             <div class="row">
               <div class="span22 well current_instruction">
-                <h1>Instruction</h1>
-                <div id="segment_current_instruction">
-                  #{render_current_instruction}
+                <h1>Threads</h1>
+                <div>
+                  <table>
+                    <tbody id="segment_threads">
+                      #{render_threads}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </div>
