@@ -520,7 +520,8 @@ class Vm
   end
 
   def detect_scm_structures!
-    markers = [ [0x6d,:memory], [0x00,:models], [0x00,:missions] ]
+    # markers = [ [0x6d,:memory], [0x00,:models], [0x00,:missions] ] # vc
+    markers = [ [115,:memory], [0x00,:models], [0x01,:missions] ] # sa
 
     self.struct_positions = Hash.new { |h,k| h[k] = [] }
     offset = 0
@@ -530,7 +531,7 @@ class Vm
       jump_opcode = disassemble_opcode_at(offset)
       marker_at = offset + jump_opcode.flatten.size
       if read(marker_at,1) != [marker]
-        raise InvalidScmStructure, "Didn't find '#{struct_name}' structure marker '#{marker}' at #{marker_at}"
+        raise InvalidScmStructure, "Didn't find '#{struct_name}' structure marker '#{marker}' at #{marker_at} (got #{read(marker_at,1)})"
       end
       self.struct_positions[struct_name][0] = marker_at + 1
 

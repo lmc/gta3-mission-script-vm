@@ -111,13 +111,15 @@ class VmHost
     HTML
   end
 
-  def render_current_instruction
+  def render_disassembly_at(address)
+    disassembly = @vm.disassemble_opcode_at(address)
+    opcode, args = *disassembly
     <<-HTML
       <table class="table table-bordered table-condensed">
         <tr>
           <th>Bytecode</th>
-          <td class="opcode"><span class="opcode">#{hex(@vm.opcode)}</span></td>
-          #{@vm.args.inject("") {|str,(data_type,value)| str << %(
+          <td class="opcode"><span class="opcode">#{hex(opcode)}</span></td>
+          #{args.inject("") {|str,(data_type,value)| str << %(
             <td>
               <span class="data_type">#{hex(data_type)}</span>
               <span class="value">#{hex(value)}</span>
@@ -126,8 +128,8 @@ class VmHost
         </tr>
         <tr>
           <th>Disassembled</th>
-          <td class="opcode"><span class="opcode">#{Opcodes.definitions[@vm.opcode][:nice] rescue "--"}</span></td>
-          #{@vm.args.inject("") {|str,(data_type,value)|
+          <td class="opcode"><span class="opcode">#{Opcodes.definitions[opcode][:nice] rescue "--"}</span></td>
+          #{args.inject("") {|str,(data_type,value)|
           attrs = ""
           value = format_arg(data_type,value)
           if data_type == TYPE_SHORTHANDS[:pg_if]
@@ -143,19 +145,23 @@ class VmHost
         </tr>
         <tr>
           <th>Handled As</th>
-          <td class="opcode"><span class="opcode">#{Opcodes.definitions[@vm.opcode][:sym_name] rescue "--"}</span></td>
-          #{@vm.args.each_with_index.inject("") {|str,((data_type,value),index)|
+          <td class="opcode"><span class="opcode">#{Opcodes.definitions[opcode][:sym_name] rescue "--"}</span></td>
+          #{args.each_with_index.inject("") {|str,((data_type,value),index)|
           str << %(
             <td>
               <a>
-                <span class="data_type">#{Opcodes.definitions[@vm.opcode][:args_types][index]}</span>
-                <span class="value">#{Opcodes.definitions[@vm.opcode][:args_names][index]}</span>
+                <span class="data_type">#{Opcodes.definitions[opcode][:args_types][index]}</span>
+                <span class="value">#{Opcodes.definitions[opcode][:args_names][index]}</span>
               </a>
             </td>
           )}}
         </tr>
       </table>
     HTML
+  end
+
+  def render_current_instruction
+    render_disassembly_at(@vm.pc)
   end
 
 =begin
@@ -193,6 +199,10 @@ class VmHost
 
               <h2>PC</h2>
               #{thread_pc}
+            </td>
+            <td>
+              <h2>Opcode</h2>
+              #{render_disassembly_at(thread_pc)}
             </td>
             </tr>
         )}.join("\n")}
