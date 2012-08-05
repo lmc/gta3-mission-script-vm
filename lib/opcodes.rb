@@ -10,7 +10,8 @@ module Opcodes
 
   SWITCH_THREAD_ON_INIT = true
 
-  parse_from_scm_ini("data/vc/VICESCM.ini")
+  #parse_from_scm_ini("data/vc/VICESCM.ini")
+  parse_from_scm_ini("data/sa/SASCM.ini")
 
   opcode("0002", "jump", jump_location:int) do |args|
     self.pc = args.jump_location
@@ -33,6 +34,7 @@ module Opcodes
   opcode("02ED", "engine_set_hidden_packages_count", hidden_packages_count:int, &engine_var_setter(:hidden_packages_count))
   opcode("01F0", "engine_set_max_wanted_level",    max_wanted_level:int,    &engine_var_setter(:max_wanted_level))
   opcode("0111", "engine_set_wasted_busted_check", wasted_busted_check:int, &engine_var_setter(:wasted_busted_check))
+  opcode("09BA", "engine_set_show_entered_zone_name", show_entered_zone_name:bool, &engine_var_setter(:show_entered_zone_name))
 
   opcode("00C0", "engine_set_game_time", hour:int, minute:int) do |args|
     self.engine_vars.time_hour   = args.hour
@@ -191,6 +193,10 @@ module Opcodes
     # TODO: do something with this
   end
 
+  opcode("0913", "extscript_run", extscript_id:int, var_args: true ) do |args|
+    # TODO: do something with this
+  end
+
   opcode("0776", "objgroup_create_objects", objgroup_id:string ) do |args|
     # TODO: do something with this
   end
@@ -210,7 +216,7 @@ module Opcodes
     self.thread_switch_to_id = self.thread_pcs.size-1 if SWITCH_THREAD_ON_INIT
   end
 
-  opcode("00D7", "thread_destroy" ) do |args|
+  opcode("004E", "thread_destroy" ) do |args|
     dead_thread_id = self.thread_id
     self.thread_pcs[dead_thread_id] = nil
     self.pc = nil
@@ -250,6 +256,12 @@ module Opcodes
     write_branch_condition!( value_at_gv1 >= value_at_gv2 )
   end
 
+
+  opcode("0662", "gamedbg_print_string", dbg_string:string) do |args|
+    puts "GAMEDBG: #{args.dbg_string}"
+  end
+
+  #opcode("0200", "is_player_near_car_3d_on_foot", player_id:pg_if, )
 
 
 end

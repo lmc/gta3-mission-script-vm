@@ -99,6 +99,8 @@ class Vm
   attr_accessor :time
   attr_accessor :dirty, :dirty_memory_addresses
 
+  attr_accessor :data_dir
+
   DATA_TYPE_MAX = 31
   VARIABLE_STORAGE_AT = 8
   NEGATED_OPCODE_MASK = 0x80
@@ -106,12 +108,13 @@ class Vm
   DIRTY_STATES = [:threads,:memory,:game_objects,:map]
 
   def self.load_scm(scm = "main-vc")
-    new( File.read("#{`pwd`.strip}/#{scm}.scm") )
+    new( scm, File.read("#{`pwd`.strip}/#{scm}.scm") )
   end
 
-  def initialize(script_binary,options = {})
+  def initialize(scm_name,script_binary,options = {})
     self.memory = Memory.new(script_binary)
-    #self.memory = script_binary.bytes.to_a
+    self.data_dir = { "main-vc" => "vc", "main" => "sa"}[scm_name]
+
     self.pc = 0
 
     self.thread_id = 0
@@ -338,7 +341,7 @@ class Vm
     opcode_pointer += 2
 
     opcode_for_lookup = undo_negated_opcode(opcode)
-    raise InvalidOpcode, "#{opcode_nice} not implemented" unless Opcodes.definitions[opcode_for_lookup]
+    raise InvalidOpcode, "#{hex(opcode_for_lookup.reverse)} not implemented" unless Opcodes.definitions[opcode_for_lookup]
 
     arg_def = Opcodes.definitions[opcode_for_lookup]
     args = []
@@ -580,10 +583,26 @@ class Vm
   end
 
   def build_opcode_map!
+    # TODO: need to implement all datatypes and shit to get a reliable disassembly
+    #return
+
     # For disassembly purposes, we need to know where an opcode begins
     # ignoring the special structures at the start of the SCM (memory, object table, mission table, etc.)
     # starting from the first opcode, record it's start address, fast-forward through the size of it's args to find the next opcode, repeat
     # will need to know arg counts for all opcodes, and size of all datatypes, with special handling for var_args
+    puts self.struct_positions.inspect
+    self.opcode_map = []
+    #address = self.struct_positions[:main][0]
+    address = 55976 # hack, main detection is broken for SA
+    puts "#{address} - #{hex(read(address-4,8))}"
+    while address <= self.memory.size
+      self.opcode_map << address
+      opcode = disassemble_opcode_at(address)
+      puts "#{address.to_s.rjust(8,"0")} - #{ch(OPCODE,opcode[0].reverse)}: #{opcode[1].map{|arg| "#{ch(TYPE,arg[0])} #{arg[1] ? ch(VALUE,arg[1]) : ""}" }.join(', ')}"
+      puts dump_memory_at(address+opcode.flatten.size)
+      address += opcode.flatten.size
+    end
+    puts self.opcode_map.inspect
   end
 
   def start_of_opcode_at(address)
