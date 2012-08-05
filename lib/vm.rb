@@ -55,7 +55,7 @@ load "game_objects/mapobject.rb"
 load "opcode_dsl.rb"
 load "opcodes.rb"
 
-# (load("lib/vm.rb") && Vm.load_scm("main-vc").run)
+# (load("lib/vm.rb") && Vm.load_scm("main").run)
 
 class Vm
   attr_accessor :memory
@@ -157,7 +157,7 @@ class Vm
 
       prepare_opcode!
       inspect_opcode
-      return
+      return true
     end
 
     reset_dirty_state
@@ -389,6 +389,8 @@ class Vm
       4
     when 0x02 # 16-bit global pointer to int/float
       2
+    when 0x03 # 16-bit local pointer to int/float
+      2
     when 0x04 # immediate 8-bit signed int
       1
     when 0x05 # immediate 16-bit signed int 
@@ -461,22 +463,16 @@ class Vm
     self.branch_conditions[next_insert] = bool
   end
 
+
   # p much everything is little-endian
   def arg_to_native(arg_type,arg_value)
     arg_type = TYPE_SHORTHANDS[arg_type] if arg_type.is_a?(Symbol)
+
+    if pack_char = PACK_CHARS_FOR_DATA_TYPE[arg_type]
+      return arg_value.to_byte_string.unpack( PACK_CHARS_FOR_DATA_TYPE[arg_type] )[0]
+    end
+
     case arg_type
-    when -0x01 # interal type for opcodes
-      arg_value.to_byte_string.unpack("S<")[0]
-    when  0x01 # immediate 32 bit signed int
-      arg_value.to_byte_string.unpack("l<")[0]
-    when 0x02 # 16-bit global pointer to int/float
-      arg_value.to_byte_string.unpack("S<")[0]
-    when  0x04 # immediate 8-bit signed int
-      arg_value.to_byte_string.unpack("c")[0]
-    when  0x05 # immediate 16 bit signed int 
-      arg_value.to_byte_string.unpack("s<")[0]
-    when  0x06 # immediate 32-bit float
-      arg_value.to_byte_string.unpack("e")[0]
     when  0x09 # immediate 8-byte string
       arg_value.to_byte_string.strip_to_null
     when  0x0e # variable-length string
@@ -488,25 +484,29 @@ class Vm
         raise InvalidDataType, "unknown data type #{arg_type} (#{hex(arg_type)})"
       end
     end
+
   end
+
 
   def native_to_arg_value(arg_type,native)
     native = [native]
     arg_type = TYPE_SHORTHANDS[arg_type] if arg_type.is_a?(Symbol)
-    pack_char = case arg_type
-    when  0x01 # immediate 32 bit signed int
-      "l<"
-    when  0x04 # immediate 8-bit signed int
-      "c"
-    when  0x05 # immediate 16 bit signed int 
-      "s<"
-    when  0x06 # immediate 32-bit float
-      "e"
-    else
+    pack_char = PACK_CHARS_FOR_DATA_TYPE[arg_type]
+    if !pack_char
       raise InvalidDataType, "native_to_arg_value: unknown data type #{arg_type} (#{hex(arg_type)})"
     end
     native.pack(pack_char).bytes.to_a
   end
+
+  PACK_CHARS_FOR_DATA_TYPE = {
+   -0x01 => "S<",
+    0x01 => "l<",
+    0x02 => "S<",
+    0x03 => "S<",
+    0x04 => "c",
+    0x05 => "s<",
+    0x06 => "e"
+  }
 
   def validate_arg(expected_arg_type,arg_type)
     return true if expected_arg_type == -1 # don't care what the arg type is
@@ -584,7 +584,7 @@ class Vm
 
   def build_opcode_map!
     # TODO: need to implement all datatypes and shit to get a reliable disassembly
-    #return
+    return
 
     # For disassembly purposes, we need to know where an opcode begins
     # ignoring the special structures at the start of the SCM (memory, object table, mission table, etc.)
