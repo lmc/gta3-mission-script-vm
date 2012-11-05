@@ -31,6 +31,7 @@ GENERIC_TYPE_SHORTHANDS = {
 }
 GENERIC_TYPE_SHORTHANDS[:int_or_float] = GENERIC_TYPE_SHORTHANDS[:int] + GENERIC_TYPE_SHORTHANDS[:float]
 GENERIC_TYPE_SHORTHANDS[:int_or_var] = GENERIC_TYPE_SHORTHANDS[:int] + GENERIC_TYPE_SHORTHANDS[:var]
+GENERIC_TYPE_SHORTHANDS[:float_or_var] = GENERIC_TYPE_SHORTHANDS[:float] + GENERIC_TYPE_SHORTHANDS[:var]
 OPCODE = -0x02
 TYPE   = -0x03
 VALUE  = -0x04
@@ -55,7 +56,8 @@ load "game_objects/mapobject.rb"
 load "opcode_dsl.rb"
 load "opcodes.rb"
 
-# (load("lib/vm.rb") && Vm.load_scm("main").run)
+# (load("lib/vm.rb") && Vm.load_scm("main-vc").run)
+# (load("lib/vm.rb") && Vm.load_scm("main").tap{|vm| vm.import_state_from_gamesave("GTASAsf1.b") })
 
 class Vm
   attr_accessor :memory
@@ -113,7 +115,7 @@ class Vm
 
   def initialize(scm_name,script_binary,options = {})
     self.memory = Memory.new(script_binary)
-    self.data_dir = { "main-vc" => "vc", "main" => "sa"}[scm_name]
+    self.data_dir = { "main-vc" => "vc", "main" => "sa" }[scm_name]
 
     self.pc = 0
 
@@ -134,10 +136,25 @@ class Vm
 
     self.tick_count = 0
     self.time = 0 #microseconds
+    
     self.dirty = {}
+    reset_dirty_state
 
     detect_scm_structures!
     build_opcode_map!
+  end
+
+  GAMESAVE_MEM_STRUCT_POS = 0x138 + 5 + 5 # 2 "BLOCK"s
+  def import_state_from_gamesave(save_path)
+    file = File.open(save_path)
+    file.seek GAMESAVE_MEM_STRUCT_POS
+
+    mem_size = file.read(4).unpack("L")[0]
+    mem_contents = file.read(mem_size)
+    puts mem_contents.bytes.to_a.inspect
+    self.struct_positions[:memory][0]
+    write!(self.struct_positions[:memory][0],mem_size,mem_contents)
+
   end
 
   def run
@@ -210,6 +227,7 @@ class Vm
       end
     end
 
+    # TODO: check for pointer types, resolve values, provide _addr value for pointer deref
     args_helper = OpcodeArgs.new
     native_args.each do |(name,type,native_value)|
       if native_value.is_a?(Array)
@@ -523,7 +541,7 @@ class Vm
   end
 
   def detect_scm_structures!
-    # markers = [ [0x6d,:memory], [0x00,:models], [0x00,:missions] ] # vc
+    #markers = [ [0x6d,:memory], [0x00,:models], [0x00,:missions] ] # vc
     markers = [ [115,:memory], [0x00,:models], [0x01,:missions] ] # sa
 
     self.struct_positions = Hash.new { |h,k| h[k] = [] }
@@ -590,24 +608,32 @@ class Vm
     # ignoring the special structures at the start of the SCM (memory, object table, mission table, etc.)
     # starting from the first opcode, record it's start address, fast-forward through the size of it's args to find the next opcode, repeat
     # will need to know arg counts for all opcodes, and size of all datatypes, with special handling for var_args
-    puts self.struct_positions.inspect
+    puts "building disassembly map"
     self.opcode_map = []
-    #address = self.struct_positions[:main][0]
-    address = 55976 # hack, main detection is broken for SA
-    puts "#{address} - #{hex(read(address-4,8))}"
-    while address <= self.memory.size
-      self.opcode_map << address
-      opcode = disassemble_opcode_at(address)
-      puts "#{address.to_s.rjust(8,"0")} - #{ch(OPCODE,opcode[0].reverse)}: #{opcode[1].map{|arg| "#{ch(TYPE,arg[0])} #{arg[1] ? ch(VALUE,arg[1]) : ""}" }.join(', ')}"
-      puts dump_memory_at(address+opcode.flatten.size)
-      address += opcode.flatten.size
+    address = self.struct_positions[:main][0]
+    #address = 55976 # hack, main detection is broken for SA
+    #puts "#{address} - #{hex(read(address-4,8))}"
+    require 'benchmark'
+    t = Benchmark.measure do
+      while address < self.memory.size
+        self.opcode_map << address
+        opcode = disassemble_opcode_at(address)
+        #puts "#{address.to_s.rjust(8,"0")} - #{ch(OPCODE,opcode[0].reverse)}: #{opcode[1].map{|arg| "#{ch(TYPE,arg[0])} #{arg[1] ? ch(VALUE,arg[1]) : ""}" }.join(', ')}"
+        #puts dump_memory_at(address+opcode.flatten.size)
+        address += opcode.flatten.size
+      end
     end
-    puts self.opcode_map.inspect
+    #puts self.opcode_map.inspect
+    puts "Disassembled #{self.opcode_map.size} opcodes (#{self.memory.size} bytes) in #{"%.4f"%t.real} secs"
   end
 
   def start_of_opcode_at(address)
-    map_index = self.opcode_map.size
-    map_index -= 1 until self.opcode_map[map_index] >= address
+    return nil if address < self.struct_positions[:main][0]
+    return nil if address > self.struct_positions[:main][1] # FIXME: should be last mission/end of script
+    map_index = self.opcode_map.size - 1
+    until address >= self.opcode_map[map_index]
+      map_index -= 1
+    end
     self.opcode_map[map_index]
   end
 

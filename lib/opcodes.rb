@@ -6,7 +6,7 @@ module Opcodes
   include OpcodeDsl
   int, float, bool, string = :int, :float, :bool, :string
   pg_if = :pg_if
-  int_or_float, int_or_var = :int_or_float, :int_or_var
+  int_or_float, int_or_var, float_or_var = :int_or_float, :int_or_var, :float_or_var
 
   SWITCH_THREAD_ON_INIT = true
 
@@ -141,10 +141,12 @@ module Opcodes
   end
 
 
-  opcode("029B", "mapobject_create", model:int, x:float, y:float, z:float, ret_mapobject_id:pg_if) do |args|
+  opcode("029B", "mapobject_create", model:int, x:float_or_var, y:float_or_var, z:float_or_var, ret_mapobject_id:pg_if) do |args|
+    puts args.inspect
     allocate_game_object!(args.ret_mapobject_id,Mapobject) do |mapobject|
       mapobject.assign_from_args(args,without: [:ret_mapobject_id])
     end
+    #exit
   end
 
   opcode("01C7", "mapobject_cleanup_exclude", mapobject_id:pg_if) do |args|

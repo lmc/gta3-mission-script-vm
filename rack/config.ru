@@ -16,6 +16,7 @@ end
 
 @vm = Vm.load_scm("main")
 @vm.tick!
+@vm.import_state_from_gamesave("GTASAsf1.b")
 
 @vm_host = reload!(@vm)
 
@@ -30,6 +31,7 @@ app = proc do |env|
     @vm_host.render_json
   when %r{\A/reset}
     @vm = Vm.load_scm("main")
+    @vm.import_state_from_gamesave("GTASAsf1.b")
     @vm.tick!
     @vm_host = VmHost.new(@vm)
     @vm_host.render_main

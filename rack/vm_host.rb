@@ -111,14 +111,27 @@ class VmHost
     HTML
   end
 
-  def render_disassembly_at(address)
+  def render_disassembly_at(address,options = {})
+    options = {
+      :classes => []
+    }.merge(options)
     disassembly = @vm.disassemble_opcode_at(address)
     opcode, args = *disassembly
     <<-HTML
       <table class="table table-bordered table-condensed">
-        <tr>
-          <th>Bytecode</th>
-          <td class="opcode"><span class="opcode">#{hex(opcode)}</span></td>
+        <tr class="bytecode #{options[:classes].join(' ')}">
+          <td>
+            #{address}
+          </td>
+          <td>
+            #{disassembly.flatten.size}
+          </td>
+          <td>
+            <span class="opcode">#{Opcodes.definitions[opcode][:sym_name] rescue "--"}</span>
+          </td>
+          <td class="opcode">
+            <span class="opcode">#{hex(opcode)}</span>
+          </td>
           #{args.inject("") {|str,(data_type,value)| str << %(
             <td>
               <span class="data_type">#{hex(data_type)}</span>
@@ -126,39 +139,39 @@ class VmHost
             </td>
           )}}
         </tr>
-        <tr>
-          <th>Disassembled</th>
-          <td class="opcode"><span class="opcode">#{Opcodes.definitions[opcode][:nice] rescue "--"}</span></td>
-          #{args.inject("") {|str,(data_type,value)|
-          attrs = ""
-          value = format_arg(data_type,value)
-          if data_type == TYPE_SHORTHANDS[:pg_if]
-            attrs << %(class="hl_address hl_address_#{value}")
-          end
-          str << %(
-            <td #{attrs}>
-              <a href="#">
-                #{value}
-              </a>
-            </td>
-          )}}
-        </tr>
-        <tr>
-          <th>Handled As</th>
-          <td class="opcode"><span class="opcode">#{Opcodes.definitions[opcode][:sym_name] rescue "--"}</span></td>
-          #{args.each_with_index.inject("") {|str,((data_type,value),index)|
-          str << %(
-            <td>
-              <a>
-                <span class="data_type">#{Opcodes.definitions[opcode][:args_types][index]}</span>
-                <span class="value">#{Opcodes.definitions[opcode][:args_names][index]}</span>
-              </a>
-            </td>
-          )}}
-        </tr>
       </table>
     HTML
   end
+=begin
+  <tr class="disassembled">
+    <td class="opcode"><span class="opcode">#{Opcodes.definitions[opcode][:nice] rescue "--"}</span></td>
+    #{args.inject("") {|str,(data_type,value)|
+    attrs = ""
+    value = format_arg(data_type,value)
+    if data_type == TYPE_SHORTHANDS[:pg_if]
+      attrs << %(class="hl_address hl_address_#{value}")
+    end
+    str << %(
+      <td #{attrs}>
+        <a href="#">
+          #{value}
+        </a>
+      </td>
+    )}}
+  </tr>
+  <tr class="handled_as">
+    <td class="opcode"></td>
+    #{args.each_with_index.inject("") {|str,((data_type,value),index)|
+    str << %(
+      <td>
+        <a>
+          <span class="data_type">#{Opcodes.definitions[opcode][:args_types][index]}</span>
+          <span class="value">#{Opcodes.definitions[opcode][:args_names][index]}</span>
+        </a>
+      </td>
+    )}}
+  </tr>
+=end
 
   def render_current_instruction
     render_disassembly_at(@vm.pc)
@@ -186,6 +199,8 @@ class VmHost
   def render_threads
     <<-HTML
         #{ @vm.thread_pcs.each_with_index.map { |thread_pc,thread_id|
+          opcode_addr_prev = @vm.start_of_opcode_at(thread_pc - 1)
+          opcode_addr_next = @vm.start_of_opcode_at(thread_pc + (@vm.disassemble_opcode_at(thread_pc).flatten.size))
           classes = []
           classes << "current" if thread_id == @vm.thread_id
           %(
@@ -202,7 +217,17 @@ class VmHost
             </td>
             <td>
               <h2>Opcode</h2>
-              #{render_disassembly_at(thread_pc)}
+              <table class="opcode_sequence">
+                <tr class="sequence_item inactive"><td>
+                  #{opcode_addr_prev ? render_disassembly_at(opcode_addr_prev,:classes => %w(inactive)) : "--"}
+                </td></tr>
+                <tr class="sequence_item"><td>
+                  #{render_disassembly_at(thread_pc)}
+               </td></tr>
+               <tr class="sequence_item inactive"><td>
+                  #{opcode_addr_next ? render_disassembly_at(opcode_addr_next,:classes => %w(inactive)) : "--"}
+                </td></tr>
+              </table>
             </td>
             </tr>
         )}.join("\n")}

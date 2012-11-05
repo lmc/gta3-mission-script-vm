@@ -35,6 +35,12 @@ table.threads_table { width: auto !important; }
 .threads .id { width: 1em; text-align: left;  padding-right: 1em; }
 .threads .pc {  }
 
+.opcode_sequence .inactive { opacity: 0.75; }
+/*
+.opcode_sequence .bytecode { display: none; }
+.opcode_sequence .disassembled { display: none; }
+*/
+
 .game_objects { height: 400px; }
 .game_objects table tbody { display: block; height: 20em; overflow-y: scroll; }
 .game_objects td.address { width: 5em; text-align: right; }
