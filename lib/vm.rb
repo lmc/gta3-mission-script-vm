@@ -145,15 +145,74 @@ class Vm
   end
 
   GAMESAVE_MEM_STRUCT_POS = 0x138 + 5 + 5 # 2 "BLOCK"s
+  GAMESAVE_THREAD_OFFSET = 10787168
   def import_state_from_gamesave(save_path)
+    puts "import_state_from_gamesave(#{save_path.inspect})"
     file = File.open(save_path)
     file.seek GAMESAVE_MEM_STRUCT_POS
 
+    puts "  importing memory..."
     mem_size = file.read(4).unpack("L")[0]
+    mem_pos = self.struct_positions[:memory][0]
+    puts "    found #{mem_size} bytes, writing to #{mem_pos}"
     mem_contents = file.read(mem_size)
-    puts mem_contents.bytes.to_a.inspect
     self.struct_positions[:memory][0]
-    write!(self.struct_positions[:memory][0],mem_size,mem_contents)
+    write!(mem_pos,mem_size,mem_contents)
+
+    thread_structs_pos = GAMESAVE_MEM_STRUCT_POS + 4 + mem_size + 0x0902
+    puts "  importing threads..."
+    file.seek thread_structs_pos
+    num_threads = file.read(4).unpack("L")[0]
+    puts "    found #{num_threads} threads"
+    
+    num_threads.times do |thread_num|
+      puts
+      thread_pos = thread_structs_pos + 4 + (thread_num * 262)
+
+      file.seek(thread_pos)
+      thread_id = file.read(2).unpack("S")[0]
+
+      n_p = file.read(32).unpack("l")[0]
+      p_p = file.read(32).unpack("l")[0]
+      puts "  n_p: #{n_p}, p_p: #{p_p}"
+
+      file.seek(thread_pos + 2 + 0x08)
+      thread_name = file.read(8).strip
+
+      file.seek(thread_pos + 2 + 0x10)
+      base_address = file.read(4).unpack("l")[0]
+      file.seek(thread_pos + 2 + 0x14)
+      thread_pc = file.read(4).unpack("l")[0]
+
+      thread_stack = file.read(4*8).unpack("l")
+      thread_stack_p = file.read(4).unpack("l")[0]
+      #puts "  thread_stack: #{thread_stack.inspect} - #{thread_stack_p}"
+
+      rel_addresses_pos = thread_pos + 226
+      
+      36.times do |rel_addr_id|
+        rel_address_pos = rel_addresses_pos + (rel_addr_id * 36)
+        file.seek(rel_address_pos)
+        rel_pc = file.read(4).unpack("L")[0]
+        rel_stack = file.read(4*8).unpack("L*")
+        if rel_addr_id == 0
+          #puts "    !> #{rel_pc}"
+          #puts "    !> #{hex(self.disassemble_opcode_at(rel_pc).flatten) rescue '!'}"
+        end
+        #puts "    #{rel_pc} - #{rel_stack.inspect}"
+      end
+
+      thread_pc -= GAMESAVE_THREAD_OFFSET
+
+      # TODO: local thread vars
+      self.thread_pcs[thread_id] = thread_pc
+      self.thread_names[thread_id] = thread_name
+
+      puts "    thread ##{thread_id} (#{thread_name}) @ #{thread_pc} #{base_address}"
+      #puts "    #{self.struct_positions.inspect}"
+      puts "    disassembly: #{self.disassemble_opcode_at(thread_pc).inspect}"
+      puts "    disassembly: #{hex(self.disassemble_opcode_at(thread_pc).flatten)}"
+    end
 
   end
 
