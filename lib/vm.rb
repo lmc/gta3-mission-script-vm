@@ -93,6 +93,8 @@ class Vm
   attr_accessor :onmission_address
   attr_accessor :game_objects
 
+  attr_accessor :opcodes_module
+
   attr_accessor :scm_structures
 
   attr_accessor :opcode_map
@@ -115,7 +117,7 @@ class Vm
 
   def initialize(scm_name,script_binary,options = {})
     self.memory = Memory.new(script_binary)
-    self.data_dir = { "main-vc" => "vc", "main" => "sa" }[scm_name]
+    self.data_dir = data_dir = { "main-vc" => "vc", "main" => "sa" }[scm_name]
 
     self.pc = 0
 
@@ -139,6 +141,11 @@ class Vm
     
     self.dirty = {}
     reset_dirty_state
+
+    self.opcodes_module = Opcodes.module_for_game(data_dir)
+    extend self.opcodes_module
+
+    puts (self.methods.sort - Object.methods)
 
     detect_scm_structures!
     build_opcode_map!
@@ -270,7 +277,7 @@ class Vm
   end
 
   def execute!
-    definition = Opcodes.definitions[self.opcode]
+    definition = self.opcodes_module.definitions[self.opcode]
     translated_opcode = definition[:nice]
 
     # TODO: will this actually handle variable-length arg lists?
@@ -383,7 +390,7 @@ class Vm
     raise ex
   end
 
-  include Opcodes
+  # include Opcodes
 
   def inspect
     vars_to_inspect = [:pc,:opcode,:opcode_nice,:args,:thread_id,:thread_pcs,:branch_conditions]
@@ -418,9 +425,9 @@ class Vm
     opcode_pointer += 2
 
     opcode_for_lookup = undo_negated_opcode(opcode)
-    raise InvalidOpcode, "#{hex(opcode_for_lookup.reverse)} not implemented" unless Opcodes.definitions[opcode_for_lookup]
+    raise InvalidOpcode, "#{hex(opcode_for_lookup.reverse)} not implemented" unless self.opcodes_module.definitions[opcode_for_lookup]
 
-    arg_def = Opcodes.definitions[opcode_for_lookup]
+    arg_def = self.opcodes_module.definitions[opcode_for_lookup]
     args = []
     arg_def[:args_count].times do |index|
       # var_args is a magic arg name
@@ -599,9 +606,19 @@ class Vm
     end
   end
 
+  def self.scm_markers(data_dir)
+    case data_dir
+    when "vc"
+      [ [0x6d,:memory], [0x00,:models], [0x00,:missions] ]
+    when "sa"
+      [ [115,:memory], [0x00,:models], [0x01,:missions] ]
+    end
+  end
+
   def detect_scm_structures!
     #markers = [ [0x6d,:memory], [0x00,:models], [0x00,:missions] ] # vc
-    markers = [ [115,:memory], [0x00,:models], [0x01,:missions] ] # sa
+    # markers = [ [115,:memory], [0x00,:models], [0x01,:missions] ] # sa
+    markers = self.class.scm_markers(data_dir)
 
     self.struct_positions = Hash.new { |h,k| h[k] = [] }
     offset = 0
