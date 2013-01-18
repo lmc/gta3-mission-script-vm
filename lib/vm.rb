@@ -1,9 +1,10 @@
 require "ostruct"
 class OpenStruct; def to_hash; @table; end; end
+require "pp"
 
 TYPE_SHORTHANDS = {
   :int32   => 0x01,
-  :pg_if   => 0x02,
+  :pg_if   => 0x02, #if is redundant, all "pointers" are to ints or floats
   :bool    => 0x04,
   :int8    => 0x04,
   :int16   => 0x05,
@@ -11,6 +12,7 @@ TYPE_SHORTHANDS = {
   :string  => 0x09,
   :vstring => 0x0e
 }
+TYPE_SHORTHANDS_INV = TYPE_SHORTHANDS.invert
 POINTER_TYPES = {
   :pg_if => { :scope => :global, :size => 4 }
 }
@@ -57,6 +59,7 @@ load "opcode_dsl.rb"
 load "opcodes.rb"
 
 # (load("lib/vm.rb") && Vm.load_scm("main-vc").run)
+# (load("lib/vm.rb") && Vm.load_scm("main-vc").decompile!)
 # (load("lib/vm.rb") && Vm.load_scm("main").tap{|vm| vm.import_state_from_gamesave("GTASAsf1.b") })
 
 class Vm
@@ -98,6 +101,7 @@ class Vm
   attr_accessor :scm_structures
 
   attr_accessor :opcode_map
+  attr_accessor :opcode_addresses_to_jump_sources
 
   attr_accessor :tick_count
   attr_accessor :time
@@ -145,10 +149,8 @@ class Vm
     self.opcodes_module = Opcodes.module_for_game(data_dir)
     extend self.opcodes_module
 
-    puts (self.methods.sort - Object.methods)
-
     detect_scm_structures!
-    build_opcode_map!
+    # build_opcode_map!
   end
 
   GAMESAVE_MEM_STRUCT_POS = 0x138 + 5 + 5 # 2 "BLOCK"s
@@ -400,8 +402,8 @@ class Vm
     "#<#{self.class.name} #{vars_to_inspect.map{|var| "#{var}=#{send(var).inspect}" }.join(" ") }>"
   end
 
-  def opcode_nice
-    arg_to_native(-0x01,self.opcode).to_s(16).rjust(4,"0").upcase
+  def opcode_nice(opcode = self.opcode)
+    arg_to_native(-0x01,opcode).to_s(16).rjust(4,"0").upcase
   end
 
   def thread_name
@@ -549,7 +551,9 @@ class Vm
 
 
   # p much everything is little-endian
-  def arg_to_native(arg_type,arg_value)
+  def arg_to_native(arg_type,arg_value = nil)
+    return nil if arg_type == 0x00
+    
     arg_type = TYPE_SHORTHANDS[arg_type] if arg_type.is_a?(Symbol)
 
     if pack_char = PACK_CHARS_FOR_DATA_TYPE[arg_type]
@@ -672,13 +676,16 @@ class Vm
 
       offset = struct_end
     end
+
+    puts "struct_positions:"
+    pp self.struct_positions
     
     true
   end
 
   def build_opcode_map!
     # TODO: need to implement all datatypes and shit to get a reliable disassembly
-    return
+    # return
 
     # For disassembly purposes, we need to know where an opcode begins
     # ignoring the special structures at the start of the SCM (memory, object table, mission table, etc.)
@@ -686,21 +693,55 @@ class Vm
     # will need to know arg counts for all opcodes, and size of all datatypes, with special handling for var_args
     puts "building disassembly map"
     self.opcode_map = []
+    self.opcode_addresses_to_jump_sources = Hash.new {|h,k| h[k] = []} # key is destination address, values are array of source addresses that jump to destination
     address = self.struct_positions[:main][0]
     #address = 55976 # hack, main detection is broken for SA
     #puts "#{address} - #{hex(read(address-4,8))}"
     require 'benchmark'
     t = Benchmark.measure do
       while address < self.memory.size
-        self.opcode_map << address
+        opcode_address = address
         opcode = disassemble_opcode_at(address)
+        next_opcode_address = address + opcode.flatten.size
+        address = next_opcode_address
         #puts "#{address.to_s.rjust(8,"0")} - #{ch(OPCODE,opcode[0].reverse)}: #{opcode[1].map{|arg| "#{ch(TYPE,arg[0])} #{arg[1] ? ch(VALUE,arg[1]) : ""}" }.join(', ')}"
         #puts dump_memory_at(address+opcode.flatten.size)
-        address += opcode.flatten.size
+        self.opcode_map << opcode_address
+
+        if is_unconditional_jump?(opcode)
+          jump_address = self.arg_to_native(*opcode[1][0])
+          self.opcode_addresses_to_jump_sources[jump_address] << opcode_address # unconditional jump goes straight to target
+        elsif is_conditional_jump?(opcode)
+          jump_address = self.arg_to_native(*opcode[1][0])
+          # puts "conditional: #{address}, #{opcode.inspect} => #{jump_address}"
+          self.opcode_addresses_to_jump_sources[next_opcode_address] << opcode_address # previous address CAN jump to next address...
+          self.opcode_addresses_to_jump_sources[jump_address] << opcode_address # ...but can also jump to provided address
+        elsif is_terminator?(opcode)
+          # jumps nowhere, execution ends
+        else
+          self.opcode_addresses_to_jump_sources[next_opcode_address] << opcode_address # previous address jumps to next address
+        end
       end
     end
     #puts self.opcode_map.inspect
     puts "Disassembled #{self.opcode_map.size} opcodes (#{self.memory.size} bytes) in #{"%.4f"%t.real} secs"
+    require 'pp'
+    # pp opcode_addresses_to_jump_sources
+  end
+
+  def is_unconditional_jump?(opcode)
+    opcode_def = self.opcodes_module.definitions[opcode[0]]
+    ["0002"].include?(opcode_def[:nice])
+  end
+
+  def is_conditional_jump?(opcode)
+    opcode_def = self.opcodes_module.definitions[opcode[0]]
+    ["004D","004F","00D7"].include?(opcode_def[:nice])
+  end
+
+  def is_terminator?(opcode)
+    opcode_def = self.opcodes_module.definitions[opcode[0]]
+    ["004E"].include?(opcode_def[:nice])
   end
 
   def start_of_opcode_at(address)
@@ -717,6 +758,23 @@ class Vm
   def reset_dirty_state
     DIRTY_STATES.each { |state| self.dirty[state] = false }
     self.dirty_memory_addresses = []
+  end
+
+  def decompile!
+    offset = struct_positions[:main][0]
+    end_offset = struct_positions[:main][1]
+
+    stream = File.open('decompile.txt','w')
+
+    while offset < end_offset
+      opcode = disassemble_opcode_at(offset)
+      opcode_name = self.opcodes_module.definitions[opcode[0]][:sym_name]
+      args = opcode[1].map { |arg| "(%s %s)" % [ TYPE_SHORTHANDS_INV[arg[0]] || arg[0], arg_to_native(*arg).inspect ] }
+      stream.puts "%s: (%s %s)" % [offset, opcode_name, args.join(" ")]
+      offset += opcode.flatten.size
+    end
+
+    stream.close
   end
 
   def dump_memory_at(address,size = 16,previous_context = 0,shim_range = nil,shim = nil) #yield(buffer)

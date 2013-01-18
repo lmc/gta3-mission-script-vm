@@ -17,12 +17,17 @@ module OpcodeDsl
 
       def self.parse_from_scm_ini(path_to_ini)
         File.open(path_to_ini,"r").read.each_line do |line|
-          next unless line =~ /\A([0-9a-f]{4})\=(\d+),/i
-          opcode, arg_count = $1.upcase, $2.to_i
+          next unless line =~ /\A([0-9a-f]{4})\=(\d+),(.*)?/i
+          opcode, arg_count, notes = $1.upcase, $2.to_i, $3
+
+          # try to hack something nice out of the notes
+          notes = notes.gsub(/(%.*?%)/im,'').strip.gsub(/;/,'').gsub(/\s+/,'_')
+          opcode_name = "#{opcode}_#{notes}"
+          puts opcode_name
           
           args_def = {}
           arg_count.times{ |i| args_def["arg_#{i}"] = -1 }
-          opcode(opcode,"auto_#{opcode}",args_def) { |args|
+          opcode(opcode,"auto_#{opcode_name}",args_def) { |args|
             puts "  !!! WARNING: opcode #{opcode} is auto-generated and NOOP"
           }
         end
