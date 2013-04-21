@@ -12,7 +12,7 @@ module Opcodes
 
     include OpcodeDsl
     int, float, bool, string = :int, :float, :bool, :string
-    pg_if = :pg_if
+    pg = :pg
     int_or_float, int_or_var, float_or_var = :int_or_float, :int_or_var, :float_or_var
 
     #parse_from_scm_ini("data/vc/VICESCM.ini")
@@ -64,14 +64,15 @@ module Opcodes
       self.engine_vars.game_stats[args.var_id] = args.value
     end
 
-    opcode("0053", "player_create", model:int, x:float, y:float, z:float, ret_player_id:pg_if ) do |args|
+    # opcode("0053", "player_create", model:int, x:float, y:float, z:float, ret_player_id:pg ) do |args|
+    opcode("0053", "player_create", model:int, x:float, y:float, z:float, ret_player_id:pg ) do |args|
       self.game_objects[args.ret_player_id] = Player.new(
         :model => args.model,
         :x => args.x,
         :y => args.y,
         :z => args.z,
       )
-      allocate!(args.ret_player_id,:pg_if,Player)
+      allocate!(args.ret_player_id,:pg,Player)
     end
 
     opcode("06CF", "noop", noop:int ) do |args|
@@ -91,14 +92,14 @@ module Opcodes
       #self.engine_vars.pedgroup_relationships[args.pedgroup_2][args.pedgroup_1] = args.relationship
     end
 
-    opcode("07AF", "player_get_pedgroup", player_id:pg_if, ret_player_group:pg_if ) do |args|
+    opcode("07AF", "player_get_pedgroup", player_id:pg, ret_player_group:pg ) do |args|
       pedgroup = self.game_objects[args.player_id].pedgroup ||= 126126
       allocate!(args.ret_player_group,:int32,pedgroup)
     end
 
-    opcode("01F5", "player_get_actor", player_id:pg_if, ret_player_actor_id:pg_if ) do |args|
+    opcode("01F5", "player_get_actor", player_id:pg, ret_player_actor_id:pg ) do |args|
       #self.game_objects[args.ret_player_actor_id] = Actor.new
-      #allocate!(args.ret_player_actor_id,:pg_if,Actor)
+      #allocate!(args.ret_player_actor_id,:pg,Actor)
       allocate_game_object!(args.ret_player_actor_id,Actor)
     end
 
@@ -106,7 +107,7 @@ module Opcodes
       # do nothing?
     end
 
-    opcode("0173", "actors_set_z_angle", actor_id:pg_if, z_angle:float ) do |args|
+    opcode("0173", "actors_set_z_angle", actor_id:pg, z_angle:float ) do |args|
       # TODO: write to actors/players
     end
 
@@ -120,33 +121,33 @@ module Opcodes
       self.thread_suspended = true
     end
 
-    opcode("0004", "set_global_int", ret_address:pg_if, value:int ) do |args|
+    opcode("0004", "set_global_int", ret_address:pg, value:int ) do |args|
       allocate!(args.ret_address,args.value_type,args.value)
     end
 
-    opcode("0005", "set_global_float", ret_address:pg_if, value:float ) do |args|
+    opcode("0005", "set_global_float", ret_address:pg, value:float ) do |args|
       puts [args.ret_address,args.value_type,args.value].inspect
       allocate!(args.ret_address,args.value_type,args.value)
     end
 
-    opcode("04AE", "set_global_int_or_float", ret_address:pg_if, value:int_or_float ) do |args|
+    opcode("04AE", "set_global_int_or_float", ret_address:pg, value:int_or_float ) do |args|
       allocate!(args.ret_address,args.value_type,args.value)
     end
 
-    opcode("0008", "add_set_global_int", ret_address:pg_if, value:int ) do |args|
+    opcode("0008", "add_set_global_int", ret_address:pg, value:int ) do |args|
       gv_value = arg_to_native(:int32,read(args.ret_address,4))
       gv_value += args.value 
       allocate!(args.ret_address,:int32,gv_value)
     end
 
-    opcode("0213", "pickup_create", model:int, flags:int, x:float, y:float, z:float, ret_pickup_id:pg_if ) do |args|
+    opcode("0213", "pickup_create", model:int, flags:int, x:float, y:float, z:float, ret_pickup_id:pg ) do |args|
       # TODO: do something with pickup
       # flags documented at: http://gtag.gtagaming.com/opcode-database.php?opcode=0213
-      allocate!(args.ret_pickup_id,:pg_if,Pickup)
+      allocate!(args.ret_pickup_id,:pg,Pickup)
     end
 
 
-    opcode("029B", "mapobject_create", model:int, x:float_or_var, y:float_or_var, z:float_or_var, ret_mapobject_id:pg_if) do |args|
+    opcode("029B", "mapobject_create", model:int, x:float_or_var, y:float_or_var, z:float_or_var, ret_mapobject_id:pg) do |args|
       puts args.inspect
       allocate_game_object!(args.ret_mapobject_id,Mapobject) do |mapobject|
         mapobject.assign_from_args(args,without: [:ret_mapobject_id])
@@ -154,12 +155,12 @@ module Opcodes
       #exit
     end
 
-    opcode("01C7", "mapobject_cleanup_exclude", mapobject_id:pg_if) do |args|
+    opcode("01C7", "mapobject_cleanup_exclude", mapobject_id:pg) do |args|
       # TODO: do something with this
     end
 
 
-    opcode("0180", "engine_bind_onmission_var", ret_address:pg_if ) do |args|
+    opcode("0180", "engine_bind_onmission_var", ret_address:pg ) do |args|
       self.onmission_address = args.ret_address
       allocate!(args.ret_address,:int32,0)
     end
@@ -169,13 +170,13 @@ module Opcodes
     end
 
     opcode("014B", "cargen_create", x:float, y:float, z:float, rz:float, car_model:int, color1:int, color2:int,
-      force_spawn:bool, alarm_pc:int, locked_pc:int, delay_min:int, delay_max:int, ret_cargen_id:pg_if ) do |args|
+      force_spawn:bool, alarm_pc:int, locked_pc:int, delay_min:int, delay_max:int, ret_cargen_id:pg ) do |args|
       allocate_game_object!(args.ret_cargen_id,Cargen) do |cargen|
         cargen.assign_from_args(args,without: [:ret_cargen_id])
       end
     end
 
-    opcode("014C", "cargen_set_ttl", cargen_id:pg_if, ttl:int ) do |args|
+    opcode("014C", "cargen_set_ttl", cargen_id:pg, ttl:int ) do |args|
       self.game_objects[args.cargen_id].ttl = args.ttl
     end
 
@@ -212,14 +213,14 @@ module Opcodes
       # TODO: do something with this
     end
 
-    opcode("004F", "thread_create_with_args", thread_pc:int, var_args: true ) do |args|
-      self.thread_pcs << args.thread_pc
+    opcode("004F", "thread_create_with_args", jump_thread_pc:int, var_args: true ) do |args|
+      self.thread_pcs << args.jump_thread_pc
       # TODO: load var_args into thread local vars
       self.thread_switch_to_id = self.thread_pcs.size-1 if SWITCH_THREAD_ON_INIT
     end
 
-    opcode("00D7", "thread_create", thread_pc:int ) do |args|
-      self.thread_pcs << args.thread_pc
+    opcode("00D7", "thread_create", jump_thread_pc:int ) do |args|
+      self.thread_pcs << args.jump_thread_pc
       self.thread_switch_to_id = self.thread_pcs.size-1 if SWITCH_THREAD_ON_INIT
     end
 
@@ -235,7 +236,7 @@ module Opcodes
       self.branch_conditions = Array.new(conditions_count)
     end
 
-    opcode("0256", "if_player_defined", player_id:pg_if ) do |args|
+    opcode("0256", "if_player_defined", player_id:pg ) do |args|
       bool = true
 
       #puts "should player exist? (y/n)"
@@ -244,20 +245,20 @@ module Opcodes
       write_branch_condition!( bool ) # TODO: do this properly
     end
 
-    opcode("004D", "if_false_jump", address:int ) do |args|
+    opcode("004D", "if_false_jump", jump_address:int ) do |args|
       if self.branch_conditions.any?(&:nil?)
         raise Vm::InvalidBranchConditionState, "not enough conditional opcodes (allocated: #{self.branch_conditions.size})"
       end
-      self.pc = args.address if !self.branch_conditions.all? # all must be true, otherwise jump
+      self.pc = args.jump_address if !self.branch_conditions.all? # all must be true, otherwise jump
       self.branch_conditions = nil
     end
 
-    opcode("0038", "if_gv_eq_int", gv_address:pg_if, int:int ) do |args|
+    opcode("0038", "if_gv_eq_int", gv_address:pg, int:int ) do |args|
       value_at_gv = arg_to_native(:int32,read(args.gv_address,4))
       write_branch_condition!( value_at_gv == args.int )
     end
 
-    opcode("002C", "if_gv_int_gte_gv_int", gv_address_1:pg_if, gv_address_2:pg_if ) do |args|
+    opcode("002C", "if_gv_int_gte_gv_int", gv_address_1:pg, gv_address_2:pg ) do |args|
       value_at_gv1 = arg_to_native(:int32,read(args.gv_address_1,4))
       value_at_gv2 = arg_to_native(:int32,read(args.gv_address_2,4))
       write_branch_condition!( value_at_gv1 >= value_at_gv2 )
@@ -268,7 +269,7 @@ module Opcodes
       puts "GAMEDBG: #{args.dbg_string}"
     end
 
-    #opcode("0200", "is_player_near_car_3d_on_foot", player_id:pg_if, )
+    #opcode("0200", "is_player_near_car_3d_on_foot", player_id:pg, )
 
   end
 

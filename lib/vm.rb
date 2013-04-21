@@ -4,7 +4,7 @@ require "pp"
 
 TYPE_SHORTHANDS = {
   :int32   => 0x01,
-  :pg_if   => 0x02, #if is redundant, all "pointers" are to ints or floats
+  :pg      => 0x02, # all "pointers" are to ints or floats
   :bool    => 0x04,
   :int8    => 0x04,
   :int16   => 0x05,
@@ -14,7 +14,7 @@ TYPE_SHORTHANDS = {
 }
 TYPE_SHORTHANDS_INV = TYPE_SHORTHANDS.invert
 POINTER_TYPES = {
-  :pg_if => { :scope => :global, :size => 4 }
+  :pg => { :scope => :global, :size => 4 }
 }
 TYPE_SIZES = {
   0x01 => 4,
@@ -29,7 +29,7 @@ GENERIC_TYPE_SHORTHANDS = {
   :int    => [:int8,:int16,:int32],
   :float  => [:float32],
   :string => [:string,:vstring],
-  :var    => [:pg_if]
+  :var    => [:pg]
 }
 GENERIC_TYPE_SHORTHANDS[:int_or_float] = GENERIC_TYPE_SHORTHANDS[:int] + GENERIC_TYPE_SHORTHANDS[:float]
 GENERIC_TYPE_SHORTHANDS[:int_or_var] = GENERIC_TYPE_SHORTHANDS[:int] + GENERIC_TYPE_SHORTHANDS[:var]
@@ -57,6 +57,7 @@ load "game_objects/cargen.rb"
 load "game_objects/mapobject.rb"
 load "opcode_dsl.rb"
 load "opcodes.rb"
+load "decompiler.rb"
 
 # (load("lib/vm.rb") && Vm.load_scm("main-vc").run)
 # (load("lib/vm.rb") && Vm.load_scm("main-vc").decompile!)
@@ -87,6 +88,7 @@ class Vm
   attr_accessor :branch_conditions
 
   attr_accessor :missions
+  attr_accessor :missions_ranges
   attr_accessor :missions_count
 
   attr_accessor :engine_vars
@@ -150,7 +152,7 @@ class Vm
     extend self.opcodes_module
 
     detect_scm_structures!
-    # build_opcode_map!
+    build_opcode_map!
   end
 
   GAMESAVE_MEM_STRUCT_POS = 0x138 + 5 + 5 # 2 "BLOCK"s
@@ -498,7 +500,7 @@ class Vm
 
   #protected
 
-  def allocate_game_object!(address,game_object_class,pointer_type = :pg_if,&block)
+  def allocate_game_object!(address,game_object_class,pointer_type = :pg,&block)
     self.game_objects[address] = game_object_class.new
     allocate!(address,pointer_type,game_object_class)
     yield(self.game_objects[address]) if block_given?
@@ -550,28 +552,36 @@ class Vm
   end
 
 
+  FLOAT_PRECISION = 3
   # p much everything is little-endian
   def arg_to_native(arg_type,arg_value = nil)
     return nil if arg_type == 0x00
-    
+
     arg_type = TYPE_SHORTHANDS[arg_type] if arg_type.is_a?(Symbol)
 
-    if pack_char = PACK_CHARS_FOR_DATA_TYPE[arg_type]
-      return arg_value.to_byte_string.unpack( PACK_CHARS_FOR_DATA_TYPE[arg_type] )[0]
+    value = if pack_char = PACK_CHARS_FOR_DATA_TYPE[arg_type]
+      value = arg_value.to_byte_string.unpack( PACK_CHARS_FOR_DATA_TYPE[arg_type] )[0]
+      value
+    else
+
+      case arg_type
+      when  0x09 # immediate 8-byte string
+        arg_value.to_byte_string.strip_to_null
+      when  0x0e # variable-length string
+        arg_value.to_byte_string[1..-1]
+      else
+        if arg_type > DATA_TYPE_MAX # immediate type-less 8-byte string
+          [arg_type,arg_value].flatten.to_byte_string.strip_to_null #FIXME: can have random crap after first null byte, cleanup
+        else
+          raise InvalidDataType, "unknown data type #{arg_type} (#{hex(arg_type)})"
+        end
+      end
+
     end
 
-    case arg_type
-    when  0x09 # immediate 8-byte string
-      arg_value.to_byte_string.strip_to_null
-    when  0x0e # variable-length string
-      arg_value.to_byte_string[1..-1]
-    else
-      if arg_type > DATA_TYPE_MAX # immediate type-less 8-byte string
-        [arg_type,arg_value].flatten.to_byte_string.strip_to_null #FIXME: can have random crap after first null byte, cleanup
-      else
-        raise InvalidDataType, "unknown data type #{arg_type} (#{hex(arg_type)})"
-      end
-    end
+    value = value.round(FLOAT_PRECISION) if value.is_a?(Float)
+
+    value
 
   end
 
@@ -670,8 +680,16 @@ class Vm
           self.missions[id * -1] = arg_to_native(:int32,read(offset,4))
           offset += 4
         end
+        self.missions_ranges = []
+        self.missions.each_pair do |mission_id,mission_offset|
+          end_mission_offset = self.missions[mission_id - 1] ? self.missions[mission_id - 1] - 1 : self.memory.size
+          self.missions_ranges << [ (mission_offset..end_mission_offset), mission_id ]
+        end
+
         self.struct_positions[:main][0] = offset
-        self.struct_positions[:main][1] = self.missions[0]
+        self.struct_positions[:main][1] = self.missions[0] - 1
+        self.struct_positions[:mission_code][0] = self.missions[0]
+        self.struct_positions[:mission_code][1] = self.memory.size
       end
 
       offset = struct_end
@@ -681,6 +699,10 @@ class Vm
     pp self.struct_positions
     
     true
+  end
+
+  def get_mission_from_offset(offset)
+    self.missions_ranges.detect { |(range,id)| range.include?(offset) }
   end
 
   def build_opcode_map!
@@ -714,12 +736,14 @@ class Vm
         elsif is_conditional_jump?(opcode)
           jump_address = self.arg_to_native(*opcode[1][0])
           # puts "conditional: #{address}, #{opcode.inspect} => #{jump_address}"
-          self.opcode_addresses_to_jump_sources[next_opcode_address] << opcode_address # previous address CAN jump to next address...
+          # self.opcode_addresses_to_jump_sources[next_opcode_address] << opcode_address # previous address CAN jump to next address...
           self.opcode_addresses_to_jump_sources[jump_address] << opcode_address # ...but can also jump to provided address
         elsif is_terminator?(opcode)
           # jumps nowhere, execution ends
+          # self.opcode_addresses_to_jump_sources[next_opcode_address] << nil # ack
         else
-          self.opcode_addresses_to_jump_sources[next_opcode_address] << opcode_address # previous address jumps to next address
+          # don't want, fucks up with labels after a terminator (OR put a nil value in to specify it comes after a terminator?)
+          # self.opcode_addresses_to_jump_sources[next_opcode_address] << opcode_address # previous address jumps to next address
         end
       end
     end
@@ -761,20 +785,7 @@ class Vm
   end
 
   def decompile!
-    offset = struct_positions[:main][0]
-    end_offset = struct_positions[:main][1]
-
-    stream = File.open('decompile.txt','w')
-
-    while offset < end_offset
-      opcode = disassemble_opcode_at(offset)
-      opcode_name = self.opcodes_module.definitions[opcode[0]][:sym_name]
-      args = opcode[1].map { |arg| "(%s %s)" % [ TYPE_SHORTHANDS_INV[arg[0]] || arg[0], arg_to_native(*arg).inspect ] }
-      stream.puts "%s: (%s %s)" % [offset, opcode_name, args.join(" ")]
-      offset += opcode.flatten.size
-    end
-
-    stream.close
+    Decompiler.new(self).decompile!
   end
 
   def dump_memory_at(address,size = 16,previous_context = 0,shim_range = nil,shim = nil) #yield(buffer)

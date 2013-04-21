@@ -17,7 +17,7 @@ describe Vm do
       it "should disassemble int32s" do
         disassemble_arg("01 20 86 00 00").should == [1, [32, 134, 0, 0]]
       end
-      it "should disassemble pg_ifs" do
+      it "should disassemble pgs" do
         disassemble_arg("02 20 86").should == [2, [32, 134]]
       end
       it "should disassemble int8s" do

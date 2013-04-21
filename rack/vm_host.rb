@@ -148,7 +148,7 @@ class VmHost
     #{args.inject("") {|str,(data_type,value)|
     attrs = ""
     value = format_arg(data_type,value)
-    if data_type == TYPE_SHORTHANDS[:pg_if]
+    if data_type == TYPE_SHORTHANDS[:pg]
       attrs << %(class="hl_address hl_address_#{value}")
     end
     str << %(

@@ -137,7 +137,7 @@
 009E: set_actor $2126 path $95 $96 $97 unknown 2.0 1
 009F: set_actor $909 idle
 00A0: store_actor $854 position_to $896 $897 $898
-00A1: put_actor $player_actor at 482.2 -69.9 9.9
+00A1: put_actor $player_actor a t 482.2 -69.9 9.9
 00A3:   actor $Lance_Vance in_sphere 0 in_rectangle 466.1 325.5 448.1 339.2
 00A4:   actor $4800 in_sphere 0 -991.591 261.036 7.775 -983.0 271.96 11.506
 00A5: $1121 = create_car #DELUXO at -1022.3 -868.2 12.0
