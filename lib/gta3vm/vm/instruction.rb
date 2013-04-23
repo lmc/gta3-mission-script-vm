@@ -1,15 +1,33 @@
-class Instruction < Array
+class NestedByteArray < Array
 
-  def self.new_from_bytecode(bytecode)
-    
+  def size
+    flatten.length
+  end
+
+end
+
+class Gta3Vm::Vm::Instruction < NestedByteArray
+
+  def initialize(*args)
+    super(*args)
+    self[0] = [] unless self[0]
+    self[1] = [] unless self[1]
   end
 
   def opcode
     self[0]
   end
 
+  def opcode=(value)
+    self[0] = Opcode.new(value)
+  end
+
   def args
     self[1]
+  end
+
+  def args=(value)
+    self[1] = Args.new(value)
   end
 
   def negated?
@@ -20,23 +38,19 @@ class Instruction < Array
     
   end
 
-  def size
-    flatten.size
-  end
 
 
-
-  class Opcode < Array;
+  class Gta3Vm::Vm::Instruction::Opcode < NestedByteArray
 
   end
 
 
-  class Args < Array;
+  class Gta3Vm::Vm::Instruction::Args < NestedByteArray
 
   end
 
 
-  class Arg < Array;
+  class Gta3Vm::Vm::Instruction::Arg < NestedByteArray
 
     def type
       self[0]
@@ -45,6 +59,8 @@ class Instruction < Array
     def value
       self[1]
     end
+
   end
 
 end
+

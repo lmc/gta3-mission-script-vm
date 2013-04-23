@@ -8,8 +8,6 @@ class Gta3Vm::Memory < String
     self.vm = vm
     super(*args)
     self.force_encoding("ASCII-8BIT")
-
-    detect_structure if has_structure?
   end
 
   # assume it's a structured SCM if it starts with:
@@ -22,27 +20,34 @@ class Gta3Vm::Memory < String
     log "detect_structure"
     self.structure = {}
     offset = 0
-    markers = vm.scm_markers
+    markers = vm.class.scm_markers
 
     markers.each_with_index do |(marker,section_name),index|
+      log "detect_structure: searching for #{section_name}"
 
-      jump_opcode = vm.opcode_at(offset)
-      marker_at = offset + jump_opcode.size
+      jump_instruction = vm.instruction_at(offset)
+      log jump_instruction.inspect
+      marker_at = offset + jump_instruction.size
       marker_value = vm.memory.read(marker_at,1)
       if marker_value != [marker]
         raise InvalidScmStructure, "Didn't find '#{section_name}' structure marker '#{marker}' at #{marker_at} (got #{marker_value})"
       end
       section_start = marker_at + 1
 
-      offset = vm.arg_to_native(jump_opcode.args[0])
-      jump_opcode = vm.opcode_at(offset)
-      if jump_opcode.opcode != [0x02,0x00] && index != markers.size - 1
+      offset = vm.arg_to_native(jump_instruction.args[0])
+      jump_instruction = vm.instruction_at(offset)
+      if jump_instruction.opcode != [0x02,0x00] && index != markers.size - 1
         raise InvalidScmStructure, "Didn't find jump after '#{struct_name}' structure at #{offset}"
       end
       section_end = offset
 
-      self.structure[struct_name] = Range.new(section_start,section_end)
+      self.structure[section_name] = Range.new(section_start,section_end)
+      log "detect_structure: found #{section_name} at #{self.structure[section_name].inspect}"
     end
+  end
+
+  def read(offset,bytes = 1)
+    self[(offset)...(offset+bytes)]
   end
 
   # #############
