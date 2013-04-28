@@ -6,7 +6,7 @@ class NestedByteArray < Array
 
 end
 
-class Gta3Vm::Vm::Instruction < NestedByteArray
+class Gta3Vm::Instruction < NestedByteArray
 
   def initialize(*args)
     super(*args)
@@ -40,17 +40,17 @@ class Gta3Vm::Vm::Instruction < NestedByteArray
 
 
 
-  class Gta3Vm::Vm::Instruction::Opcode < NestedByteArray
+  class Gta3Vm::Instruction::Opcode < NestedByteArray
 
   end
 
 
-  class Gta3Vm::Vm::Instruction::Args < NestedByteArray
+  class Gta3Vm::Instruction::Args < NestedByteArray
 
   end
 
 
-  class Gta3Vm::Vm::Instruction::Arg < NestedByteArray
+  class Gta3Vm::Instruction::Arg < NestedByteArray
 
     def type
       self[0]

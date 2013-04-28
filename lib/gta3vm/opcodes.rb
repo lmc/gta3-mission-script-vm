@@ -12,7 +12,7 @@ class Gta3Vm::Opcodes
   end
 
   def load_opcode_definitions
-    Dir.glob("lib/gta3vm/vm/opcodes/*.rb").each do |path|
+    Dir.glob("lib/gta3vm/opcodes/*.rb").each do |path|
       int, float, bool, string = :int, :float, :bool, :string
       pg = :pg
       int_or_float, int_or_var, float_or_var = :int_or_float, :int_or_var, :float_or_var

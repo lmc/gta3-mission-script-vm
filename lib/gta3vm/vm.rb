@@ -16,9 +16,9 @@ require "gta3vm/core_extensions.rb"
 require "gta3vm/vm_vice_city.rb"
 require "gta3vm/logger.rb"
 require "gta3vm/memory.rb"
-require "gta3vm/vm/opcode_definition.rb"
-require "gta3vm/vm/opcodes.rb"
-require "gta3vm/vm/instruction.rb"
+require "gta3vm/opcode_definition.rb"
+require "gta3vm/opcodes.rb"
+require "gta3vm/instruction.rb"
 
 
 # load "lib/gta3vm/core_extensions.rb"
@@ -56,7 +56,7 @@ class Gta3Vm::Vm
     end
 
     offset += 2
-    instruction = Gta3Vm::Vm::Instruction.new
+    instruction = Gta3Vm::Instruction.new
     instruction.opcode = opcode
 
     definition.args_names.each do |arg_name|
@@ -83,7 +83,7 @@ class Gta3Vm::Vm
   def instruction_arg_at(offset)
     type = memory.read(offset,1)[0]
     bytes = bytes_to_read_for_arg_data_type(offset)
-    Gta3Vm::Vm::Instruction::Arg.new([type,memory.read(offset + 1,bytes)])
+    Gta3Vm::Instruction::Arg.new([type,memory.read(offset + 1,bytes)])
   end
 
   def bytes_to_read_for_arg_data_type(offset)
