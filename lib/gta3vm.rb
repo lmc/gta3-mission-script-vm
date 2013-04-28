@@ -4,5 +4,5 @@ module Gta3Vm
 
 end
 
-load 'lib/gta3vm/vm.rb'
+require 'gta3vm/vm'
 

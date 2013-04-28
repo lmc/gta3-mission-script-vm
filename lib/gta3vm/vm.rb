@@ -12,13 +12,23 @@ end
 
 require 'ostruct'
 
-load "lib/gta3vm/core_extensions.rb"
-load "lib/gta3vm/vm_vice_city.rb"
-load "lib/gta3vm/logger.rb"
-load "lib/gta3vm/memory.rb"
-load "lib/gta3vm/vm/opcode_definition.rb"
-load "lib/gta3vm/vm/opcodes.rb"
-load "lib/gta3vm/vm/instruction.rb"
+require "gta3vm/core_extensions.rb"
+require "gta3vm/vm_vice_city.rb"
+require "gta3vm/logger.rb"
+require "gta3vm/memory.rb"
+require "gta3vm/vm/opcode_definition.rb"
+require "gta3vm/vm/opcodes.rb"
+require "gta3vm/vm/instruction.rb"
+
+
+# load "lib/gta3vm/core_extensions.rb"
+# load "lib/gta3vm/vm_vice_city.rb"
+# load "lib/gta3vm/logger.rb"
+# load "lib/gta3vm/memory.rb"
+# load "lib/gta3vm/vm/opcode_definition.rb"
+# load "lib/gta3vm/vm/opcodes.rb"
+# load "lib/gta3vm/vm/instruction.rb"
+
 
 class Gta3Vm::Vm
 

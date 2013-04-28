@@ -1,1 +1,1 @@
-require "vm"
+require "gta3vm"

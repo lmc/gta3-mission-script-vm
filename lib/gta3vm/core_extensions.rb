@@ -10,7 +10,7 @@ end
 
 class Array
   def to_byte_string
-    self.map { |byte| byte.chr }.join
+    self.flatten.map(&:chr).join
   end
 end
 

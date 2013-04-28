@@ -39,6 +39,7 @@ class Gta3Vm::Memory < String
       if jump_instruction.opcode != [0x02,0x00] && index != markers.size - 1
         raise InvalidScmStructure, "Didn't find jump after '#{struct_name}' structure at #{offset}"
       end
+      log jump_instruction.inspect
       section_end = offset
 
       self.structure[section_name] = Range.new(section_start,section_end)
@@ -59,7 +60,8 @@ class Gta3Vm::Memory < String
   # Make string act like an array of bytes
   alias_method :"old_read", :"[]"
   def [](args = nil)
-    super.bytes.to_a
+    ret = super
+    ret ? ret.bytes.to_a : nil
   end
 
   def raw_read(*args)
