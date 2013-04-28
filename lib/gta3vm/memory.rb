@@ -51,6 +51,12 @@ class Gta3Vm::Memory < String
     self[(offset)...(offset+bytes)]
   end
 
+  def write(address,bytes,byte_array)
+    log "write: #{address} = #{bytes}@#{byte_array.inspect}"
+    memory_range = (address)...(address+bytes)
+    self[memory_range] = byte_array[0...bytes]
+  end
+
   # #############
 
   def inspect

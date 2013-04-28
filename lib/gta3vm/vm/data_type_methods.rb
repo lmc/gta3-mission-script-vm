@@ -25,7 +25,7 @@ module Gta3Vm::Vm::DataTypeMethods
       if arg_type > DATA_TYPE_MAX # immediate type-less 8-byte string
         7
       else
-        raise InvalidDataType, "unknown data type #{arg_type} (#{hex(arg_type)})"
+        raise Gta3Vm::Vm::InvalidDataType, "unknown data type #{arg_type} (#{hex(arg_type)})"
       end
     end
   end
@@ -71,7 +71,7 @@ module Gta3Vm::Vm::DataTypeMethods
         if arg.type > DATA_TYPE_MAX # immediate type-less 8-byte string
           [arg.type,arg.value].flatten.to_byte_string.strip_to_null #FIXME: can have random crap after first null byte, cleanup
         else
-          raise InvalidDataType, "unknown data type #{arg_type} (#{hex(arg_type)})"
+          raise Gta3Vm::Vm::InvalidDataType, "unknown data type #{arg_type} (#{hex(arg_type)})"
         end
       end
 
@@ -81,6 +81,16 @@ module Gta3Vm::Vm::DataTypeMethods
 
     value
 
+  end
+
+  def native_to_arg_value(arg_type,native)
+    native = [native]
+    arg_type = TYPE_SHORTHANDS[arg_type] if arg_type.is_a?(Symbol)
+    pack_char = PACK_CHARS_FOR_DATA_TYPE[arg_type]
+    if !pack_char
+      raise Gta3Vm::Vm::InvalidDataType, "native_to_arg_value: unknown data type #{arg_type} (#{hex(arg_type)})"
+    end
+    native.pack(pack_char).bytes.to_a
   end
 
 end

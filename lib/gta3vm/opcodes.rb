@@ -1,5 +1,7 @@
 class Gta3Vm::Opcodes
 
+  include Gta3Vm::Logger
+
   attr_accessor :vm
   attr_accessor :opcode_data
   attr_accessor :opcode_module
@@ -16,6 +18,7 @@ class Gta3Vm::Opcodes
       int, float, bool, string = :int, :float, :bool, :string
       pg = :pg
       int_or_float, int_or_var, float_or_var = :int_or_float, :int_or_var, :float_or_var
+      log "load_opcode_definitions: loading #{path}"
       eval(File.read(path))
     end
   end
@@ -54,6 +57,7 @@ class Gta3Vm::Opcodes
     self.opcode_module.class_eval do
       define_method("opcode_#{opcode_name_string}",&block)
     end
+    log "opcode: registered #{opcode_name_string}"
   end
 
 end

@@ -53,14 +53,20 @@ class Gta3Vm::Vm
 
   def execute(&block)
     execution = Gta3Vm::Execution.new(self)
-    block_given? ? yield(execution) : execution
+    begin
+      yield(execution)
+    rescue => ex
+      log "!!! VM EXCEPTION !!! #{ex.message}"
+      log "VM state: pc #{execution.pc} (#{memory.read(execution.pc - 4,4 + 8).inspect})"
+      raise
+    end
   end
 
   def instruction_at(offset)
     opcode = memory.read(offset,2)
 
     unless definition = opcodes.definition_for(opcode)
-      raise InvalidOpcode, hex(opcode.reverse)
+      raise InvalidOpcode, hex(opcode)
     end
 
     offset += 2
@@ -68,7 +74,7 @@ class Gta3Vm::Vm
     instruction.opcode = opcode
 
     definition.args_names.each do |arg_name|
-      log "instruction_at: #{arg_name}"
+      # log "instruction_at: #{arg_name}"
       # HACK: var_args is a magic arg name for opcodes that take a variable number of arguments
       if arg_name == :var_args
         # read normal args up until an arg with the data_type 0x00
@@ -95,6 +101,17 @@ class Gta3Vm::Vm
   end
 
 
+  # ####################
+
+  class InvalidScmStructure < StandardError; end
+  class InvalidOpcode < StandardError; end
+  class InvalidOpcodeArgumentType < StandardError; end
+  class InvalidDataType < StandardError; end
+
+  class InvalidBranchConditionState < StandardError; end
+
+  # ####################
+
   include DataTypeMethods
 
   # ####################
@@ -111,14 +128,5 @@ class Gta3Vm::Vm
     raise "abstract"
   end
 
-
-  # ####################
-
-  class InvalidScmStructure < StandardError; end
-  class InvalidOpcode < StandardError; end
-  class InvalidOpcodeArgumentType < StandardError; end
-  class InvalidDataType < StandardError; end
-
-  class InvalidBranchConditionState < StandardError; end
 
 end
