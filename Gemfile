@@ -5,3 +5,11 @@ gem "activesupport"
 # gem "rack"
 gem "rspec"
 
+gem "thin"
+gem "sinatra"
+gem 'sinatra-twitter-bootstrap', :require => 'sinatra/twitter-bootstrap'
+gem "haml"
+gem "sass"
+gem "coffee-script"
+gem "json"
+

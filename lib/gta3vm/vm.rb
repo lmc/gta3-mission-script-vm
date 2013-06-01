@@ -11,6 +11,7 @@ class Gta3Vm::Vm
 end
 
 require 'ostruct'
+require 'active_support/concern'
 
 require "gta3vm/core_extensions.rb"
 require "gta3vm/vm_vice_city.rb"
@@ -53,12 +54,16 @@ class Gta3Vm::Vm
 
   def execute(&block)
     execution = Gta3Vm::Execution.new(self)
-    begin
-      yield(execution)
-    rescue => ex
-      log "!!! VM EXCEPTION !!! #{ex.message}"
-      log "VM state: pc #{execution.pc} (#{memory.read(execution.pc - 4,4 + 8).inspect})"
-      raise
+    if block_given?
+      begin
+        yield(execution)
+      rescue => ex
+        log "!!! VM EXCEPTION !!! #{ex.message}"
+        log "VM state: pc #{execution.pc} (#{memory.read(execution.pc - 4,4 + 8).inspect})"
+        raise
+      end
+    else
+      execution
     end
   end
 

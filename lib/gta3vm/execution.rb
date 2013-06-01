@@ -1,3 +1,4 @@
+
 class Gta3Vm::Execution
 
   include Gta3Vm::Logger
@@ -8,6 +9,7 @@ class Gta3Vm::Execution
 
   attr_accessor :threads
 
+  attr_accessor :tick_count
   attr_accessor :current_thread_id
   attr_accessor :pc
 
@@ -15,6 +17,7 @@ class Gta3Vm::Execution
     self.vm = vm
 
     self.allocations = {}
+    self.tick_count = 0
 
     # self.threads = [VmThread.new(vm,self)]
     # self.threads[0].pc = 0
@@ -31,7 +34,9 @@ class Gta3Vm::Execution
 
   def tick
     instruction = vm.instruction_at(pc)
-    dispatch_instruction(instruction)
+    result = dispatch_instruction(instruction)
+    self.tick_count += 1
+    result
   end
 
   def dispatch_instruction(instruction)
@@ -50,6 +55,11 @@ class Gta3Vm::Execution
     raise ArgumentError, "incorrect size #{to_write.inspect}" unless to_write.size == size
 
     self.allocations[address] = data_type
+    write(address,size,to_write)
+  end
+
+  def write(address,size,to_write)
+    puts "write"
     vm.memory.write(address,size,to_write)
   end
 
@@ -96,5 +106,10 @@ class Gta3Vm::Execution
   #     self.pc = 0
   #   end
   # end
+
+  # Extra features #######
+
+  require "gta3vm/execution/dirty.rb"
+  include Gta3Vm::Execution::Dirty
   
 end

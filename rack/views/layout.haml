@@ -1,0 +1,29 @@
+!!! 5
+%html
+  %head
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <link rel="stylesheet" media="screen, projection" type="text/css" href="http://localhost:4567/css/bootstrap.min.css">
+
+    <link rel="stylesheet" media="screen, projection" type="text/css" href="http://localhost:4567/css/bootstrap-responsive.min.css">
+
+    <script type="text/javascript" src="http://localhost:4567/js/jquery.min.js">
+    </script>
+
+    <script type="text/javascript" src="http://localhost:4567/js/bootstrap.min.js">
+    </script>
+
+    <!--[if lt IE 9]>
+    <script type="text/javascript" src="http://localhost:4567/js/html5.js">
+    </script>
+    <![endif]-->
+
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+    <script src="/javascripts/main.js" /></script>
+  %body
+    - container :fluid do
+      - row do
+        - span3 do
+          = yield
+        - span5 :offset => 4 do
+          %p hello world
