@@ -15,7 +15,11 @@ class Gta3Vm::Execution
 
   def initialize(vm)
     self.vm = vm
+    reset
+    extend vm.opcodes.opcode_module
+  end
 
+  def reset
     self.allocations = {}
     self.tick_count = 0
 
@@ -24,8 +28,6 @@ class Gta3Vm::Execution
     # self.current_thread_id = 0
 
     self.pc = 0
-
-    extend vm.opcodes.opcode_module
   end
 
   def irb

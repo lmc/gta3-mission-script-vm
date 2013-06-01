@@ -1,8 +1,21 @@
 #cpu.well
-	%h2 CPU
-	%button#btn-tick.btn.btn-primary Tick
-	.contents
+  %h2 CPU
+  %button#btn-tick.btn.btn-primary Tick
+  %button#btn-reset.btn.btn-danger Reset
+  .contents
+    %dl
+      %dt PC
+      %dd.pc
+
 
 #memory.well
-	%h2 Memory
-	.contents
+  %h2 Memory
+  %form.form-inline
+    %label
+      Start
+      %input#memory_start.input-small{type: "text", placeholder: "Start"}
+    %label
+      Size
+      %input#memory_size.input-small{type: "text", placeholder: "Size"}
+    %button#btn-memory-update.btn.btn-primary Update
+  .contents

@@ -9,7 +9,7 @@ module Gta3Vm::Execution::Dirty
 
   module InstanceMethods
 
-    DIRTY_MEMORY_INITIAL = 16 * 1024
+    DIRTY_MEMORY_INITIAL = 36 * 1024
     def tick_with_dirty
       @dirty_memory = []
       # mark all memory as dirty on first tick

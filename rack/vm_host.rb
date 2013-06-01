@@ -30,6 +30,11 @@ class VmHost < Sinatra::Base
     send_tick_payload.to_json
   end
 
+  get "/reset" do
+    $exe.reset
+    redirect "/test"
+  end
+
   def send_tick_payload
     {
       pc: $exe.pc,

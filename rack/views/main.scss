@@ -1,0 +1,24 @@
+#memory {
+  width: 600px;
+
+  .contents {
+    height: 500px;
+    overflow-y: scroll;
+
+    font-family: monospace;
+
+    span {
+      display: block;
+      float: left;
+      border: 1px #000 solid;
+      width: 20px;
+      height: 20px;
+      text-align: center;
+
+      &.current_pc {
+        color: rgb(255,64,64);
+        background-color: rgb(255,224,224);
+      }
+    }
+  }
+}
