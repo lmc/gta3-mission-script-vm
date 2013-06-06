@@ -19,6 +19,9 @@ class VmClient
     @btn_reset.on('click',@btn_reset_click)
     @memory_el = $('#memory .contents')
     @memory_size = @memory_el.find('span').length
+    @memory_inspect_el = $('#memory .inspect')
+    @memory_els = $('#memory .contents')
+    @memory_els.on('click',@memory_els_click)
     @btn_memory_view_start = $('#memory_start')
     @btn_memory_view_start.val(@memory_view_start)
     @btn_memory_view_size = $('#memory_size')
@@ -29,9 +32,6 @@ class VmClient
 
   check_and_resize_memory: (start,size) =>
     end = start + size
-    console.log("check_and_resize_memory")
-    console.log(@memory_size)
-    console.log(end)
     if end > @memory_size
       for pos in [@memory_size..end]
         @memory.push(0)
@@ -61,8 +61,7 @@ class VmClient
 
   btn_reset_click: (event) =>
     console.log("reset")
-    $.ajax("/reset")
-    window.location = window.location;
+    $.ajax("/reset").complete( => window.location = window.location );
 
   btn_memory_view_update_click: (event) =>
     event.preventDefault()
@@ -80,6 +79,14 @@ class VmClient
     @memory_el.find(".pos_#{@cpu.pc}").addClass('current_pc')
 
     false
+
+  memory_els_click: (event) =>
+    event.preventDefault()
+    if matches = event.target.className.match(/pos_(\d+)/)
+      pos = matches[1]
+      $.ajax("/inspect/#{pos}").success( (data) =>
+        @memory_inspect_el.html(data)
+      )
 
   hex: (byte) =>
     if byte then byte.toString(16).replace(/^([0-9a-f])$/,"0$1").toUpperCase() else "00"

@@ -10,10 +10,10 @@
     span {
       display: block;
       float: left;
-      border: 1px #000 solid;
       width: 20px;
       height: 20px;
       text-align: center;
+      cursor: pointer;
 
       &.current_pc {
         color: rgb(255,64,64);

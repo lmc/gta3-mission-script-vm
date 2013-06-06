@@ -2,8 +2,12 @@ module Gta3Vm::Vm::DataTypeMethods
 
   extend self
 
-  def bytes_to_read_for_arg_data_type(offset)
+  def bytes_to_read_for_arg_at_offset(offset)
     arg_type = memory.read(offset,1)[0]
+    bytes_to_read_for_arg_data_type(arg_type,offset)
+  end
+
+  def bytes_to_read_for_arg_data_type(arg_type,offset)
     case arg_type
     when 0x01 # immediate 32 bit signed int
       4

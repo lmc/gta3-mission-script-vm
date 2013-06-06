@@ -12,6 +12,7 @@ end
 
 require 'ostruct'
 require 'active_support/concern'
+require 'active_support/core_ext/class/attribute'
 
 require "gta3vm/core_extensions.rb"
 require "gta3vm/vm_vice_city.rb"
@@ -23,6 +24,7 @@ require "gta3vm/instruction.rb"
 require "gta3vm/execution.rb"
 require "gta3vm/vm/helpers.rb"
 require "gta3vm/vm/data_type_methods.rb"
+require "gta3vm/instrumentation.rb"
 
 
 # load "lib/gta3vm/core_extensions.rb"
@@ -101,7 +103,12 @@ class Gta3Vm::Vm
 
   def instruction_arg_at(offset)
     type = memory.read(offset,1)[0]
-    bytes = bytes_to_read_for_arg_data_type(offset)
+    instruction_arg_at_type(type,offset)
+  end
+
+  def instruction_arg_at_type(type,offset)
+    type = Gta3Vm::Vm::DataTypeMethods::TYPE_SHORTHANDS[type] if type.is_a?(Symbol)
+    bytes = bytes_to_read_for_arg_data_type(type,offset)
     Gta3Vm::Instruction::Arg.new([type,memory.read(offset + 1,bytes)])
   end
 

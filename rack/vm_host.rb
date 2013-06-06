@@ -8,6 +8,8 @@ require 'gta3vm'
 
 class VmHost < Sinatra::Base
 
+  set :logging, true
+
   register Sinatra::Twitter::Bootstrap::Assets
 
   $vm = Gta3Vm::Vm.new_for_vc
@@ -33,6 +35,12 @@ class VmHost < Sinatra::Base
   get "/reset" do
     $exe.reset
     redirect "/test"
+  end
+
+  get "/inspect/:pos" do
+    Instrumentation.instrument {
+    haml :inspect, layout: false, locals: {pos: params[:pos].to_i, vm: $vm}
+    }
   end
 
   def send_tick_payload

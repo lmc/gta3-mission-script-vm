@@ -20,6 +20,7 @@ class Gta3Vm::Execution
   end
 
   def reset
+    log "reset"
     self.allocations = {}
     self.tick_count = 0
 
