@@ -3,20 +3,22 @@
   %button#btn-tick.btn.btn-primary Tick
   %button#btn-reset.btn.btn-danger Reset
   .contents
-    %dl
-      %dt PC
-      %dd.pc
 
 
 #memory.well
   %h2 Memory
   %form.form-inline
-    %label
-      Start
-      %input#memory_start.input-small{type: "text", placeholder: "Start"}
-    %label
-      Size
-      %input#memory_size.input-small{type: "text", placeholder: "Size"}
-    %button#btn-memory-update.btn.btn-primary Update
+    %div.input-prepend.input-append
+      %button#btn-memory-update_decr.btn -
+      %input#memory_start.span3{type: "text", placeholder: "Start"}
+      %button#btn-memory-update_incr.btn +
+    %div.pull-right
+      %label
+        %input#memory_follow_pc{type: "checkbox"}
+        Follow PC?
+      %label
+        Size
+        %input#memory_window.input-mini{type: "text", placeholder: "Window"}
+      %button#btn-memory-update.btn.btn-primary Update
   .well.inspect
   .contents

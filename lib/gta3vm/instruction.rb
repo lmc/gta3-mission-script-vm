@@ -38,6 +38,16 @@ class Gta3Vm::Instruction < NestedByteArray
     
   end
 
+  def to_ruby(vm)
+    definition = vm.opcodes.definition_for(self.opcode)
+    [
+      definition.sym_name.to_sym,
+      Hash[ definition.args_names.each_with_index.map do |arg_name,idx|
+        [arg_name.to_sym, vm.arg_to_native(self.args[idx]) ]
+      end ]
+    ]
+  end
+
 
 
   class Gta3Vm::Instruction::Opcode < NestedByteArray

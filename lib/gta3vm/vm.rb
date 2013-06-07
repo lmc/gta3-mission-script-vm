@@ -73,7 +73,7 @@ class Gta3Vm::Vm
     opcode = memory.read(offset,2)
 
     unless definition = opcodes.definition_for(opcode)
-      raise InvalidOpcode, hex(opcode)
+      raise InvalidOpcode, "#{hex(opcode)} @ #{offset}"
     end
 
     offset += 2

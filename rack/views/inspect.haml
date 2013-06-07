@@ -1,5 +1,6 @@
 %h3= locals[:pos]
 %pre= locals[:vm].instruction_at(locals[:pos]).inspect rescue "!"
+%pre= locals[:vm].instruction_at(locals[:pos]).to_ruby(locals[:vm]).inspect rescue "!"
 %table.table.table-condensed.table-border
   %tr
     %th raw

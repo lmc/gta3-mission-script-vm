@@ -3,6 +3,7 @@ class Gta3Vm::Memory < String
 
   attr_accessor :vm
   attr_accessor :structure
+  attr_accessor :opcode_map
 
   def initialize(vm,*args)
     self.vm = vm
@@ -45,6 +46,35 @@ class Gta3Vm::Memory < String
       self.structure[section_name] = Range.new(section_start,section_end)
       log "detect_structure: found #{section_name} at #{self.structure[section_name].inspect}"
     end
+
+    # TODO: do this properly, mark start of code_main and code_missions
+    self.structure[:code_main] = Range.new( self.structure[:missions].end, self.size )
+
+    log "structure: #{self.structure.inspect}"
+    build_opcode_map
+  end
+
+  def build_opcode_map
+    # For disassembly purposes, we need to know where an opcode begins
+    # ignoring the special structures at the start of the SCM (memory, object table, mission table, etc.)
+    # starting from the first opcode, record it's start address, fast-forward through the size of it's args to find the next opcode, repeat
+    # will need to know arg counts for all opcodes, and size of all datatypes, with special handling for var_args
+    puts "building disassembly map"
+    self.opcode_map = []
+    address = self.structure[:code_main].begin
+
+      while address < self.size
+        opcode_address = address
+        instruction = vm.instruction_at(address)
+        next_opcode_address = address + instruction.size
+        address = next_opcode_address
+        #puts "#{address.to_s.rjust(8,"0")} - #{ch(OPCODE,opcode[0].reverse)}: #{opcode[1].map{|arg| "#{ch(TYPE,arg[0])} #{arg[1] ? ch(VALUE,arg[1]) : ""}" }.join(', ')}"
+        #puts dump_memory_at(address+opcode.flatten.size)
+        self.opcode_map << opcode_address
+      end
+
+    puts self.opcode_map.inspect
+    puts "Disassembled #{self.opcode_map.size} opcodes (#{self.memory.size} bytes) in #{"%.4f"%t.real} secs"
   end
 
   def read(offset,bytes = 1)

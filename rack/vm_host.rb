@@ -46,7 +46,8 @@ class VmHost < Sinatra::Base
   def send_tick_payload
     {
       pc: $exe.pc,
-      dirty_memory: $exe.dirty_memory
+      dirty_memory: $exe.dirty_memory,
+      cpu: haml(:cpu, layout: false, locals: {vm: $vm, exe: $exe})
     }
   end
 

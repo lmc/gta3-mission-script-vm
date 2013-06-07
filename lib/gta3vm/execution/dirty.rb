@@ -13,8 +13,8 @@ module Gta3Vm::Execution::Dirty
     def tick_with_dirty
       @dirty_memory = []
       # mark all memory as dirty on first tick
-      # dirty_memory_mark(0,vm.memory.size) if tick_count == 0
-      dirty_memory_mark(0,DIRTY_MEMORY_INITIAL) if tick_count == 0
+      dirty_memory_mark(0,vm.memory.size) if tick_count == 0
+      # dirty_memory_mark(0,DIRTY_MEMORY_INITIAL) if tick_count == 0
       tick_without_dirty
     end
 
