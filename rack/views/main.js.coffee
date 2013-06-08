@@ -45,12 +45,13 @@ class VmClient
     success( (data) =>
       console.log(data)
       # dirty memory
-      for [address,size,data] in data.dirty_memory
+      # for [address,size,data] in data.dirty_memory
+      for [address,size] in data.dirty_memory
         console.log("updating #{address} + #{size}")
         @check_and_resize_memory(address,size)
-        for byte, idx in data
-          pos = address + idx
-          @memory[pos] = byte
+        # for byte, idx in data
+        #   pos = address + idx
+        #   @memory[pos] = byte
 
       # cpu state updates
       @cpu.pc = data.pc
@@ -77,25 +78,42 @@ class VmClient
     high = @memory_size if high > @memory_size
 
     console.log("low: #{low} - high: #{high}")
-    for pos in [low..high]
-      val = @memory[pos]
-      el = $("<span class='pos_#{pos}'>#{@hex(val)}</span> ")
-      @memory_el.append(el)
+    # for pos in [low..high]
+    #   val = @memory[pos]
+    #   el = $("<span class='pos_#{pos}'>#{@hex(val)}</span> ")
+    #   @memory_el.append(el)
 
-    console.log(@cpu.pc)
-    @memory_el.find(".current_pc").removeClass('current_pc')
-    @memory_el.find(".pos_#{@cpu.pc}").addClass('current_pc')
+    # console.log(@cpu.pc)
+    # @memory_el.find(".current_pc").removeClass('current_pc')
+    # @memory_el.find(".pos_#{@cpu.pc}").addClass('current_pc')
+    $.ajax("/memory/#{low}/#{high}").success( (data) =>
+      @memory_el.html(data)
+    )
 
     false
 
   memory_els_click: (event) =>
     console.log("memory_els_click")
+    memory_el = $(event.target)
     event.preventDefault()
+    @memory_el.find(".inspect_pos").removeClass("inspect_pos")
+    @memory_el.find(".inspect_instruction").removeClass("inspect_instruction")
     if matches = event.target.className.match(/pos_(\d+)/)
       pos = matches[1]
       $.ajax("/inspect/#{pos}").success( (data) =>
         @memory_inspect_el.html(data)
       )
+    memory_el.addClass("inspect_pos")
+    if memory_el.hasClass("instruction")
+      prev = memory_el
+      until prev.hasClass("instruction_begin")
+        prev.addClass("inspect_instruction")
+        prev = prev.prev()
+      prev.addClass("inspect_instruction")
+      next = memory_el.next()
+      until next.hasClass("instruction_begin")
+        next.addClass("inspect_instruction")
+        next = next.next()
 
   hex: (byte) =>
     if byte then byte.toString(16).replace(/^([0-9a-f])$/,"0$1").toUpperCase() else "00"

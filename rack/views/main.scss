@@ -15,10 +15,39 @@
       text-align: center;
       cursor: pointer;
 
+      border-top: 1px #aaa dotted;
+      border-left: 1px #aaa dotted;
+
       &.current_pc {
         color: rgb(255,64,64);
         background-color: rgb(255,224,224);
       }
+
+      &.instruction_begin {
+        color: rgb(64,64,255);
+        background-color: rgb(224,224,255);
+        border-color: rgb(64,64,255);
+        border-top: 1px solid;
+        border-left: 1px solid;
+      }
+      &.instruction_middle {
+        color: rgb(64,64,255);
+        background-color: rgb(224,224,255);
+        border-color: rgb(64,64,255);
+        border-top: 1px solid;
+      }
+      &.instruction_opcode {
+        border-color: rgb(64,255,64);
+        color: rgb(64,255,64);
+        background-color: rgb(224,255,224);
+      }
+      &.inspect_pos {
+        text-decoration: underline !important;
+      }
+      &.inspect_instruction {
+        font-weight: bold !important;
+      }
+
     }
   }
 }

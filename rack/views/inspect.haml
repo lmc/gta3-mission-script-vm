@@ -1,12 +1,22 @@
 %h3= locals[:pos]
-%pre= locals[:vm].instruction_at(locals[:pos]).inspect rescue "!"
-%pre= locals[:vm].instruction_at(locals[:pos]).to_ruby(locals[:vm]).inspect rescue "!"
-%table.table.table-condensed.table-border
-  %tr
-    %th raw
-    %th int32
-    %th float32
-  %tr
-    %td= locals[:vm].instruction_arg_at_type(:int32,locals[:pos]).inspect
-    %td= Gta3Vm::Vm::DataTypeMethods.arg_to_native( locals[:vm].instruction_arg_at_type(:int32,locals[:pos]) ).inspect
-    %td= Gta3Vm::Vm::DataTypeMethods.arg_to_native( locals[:vm].instruction_arg_at_type(:float32,locals[:pos]) ).inspect
+- if instruction_pos = locals[:vm].memory.start_of_opcode_at(locals[:pos])
+  - if instruction = locals[:vm].instruction_at(instruction_pos) rescue nil
+    - rinstruction = instruction.to_ruby(locals[:vm])
+    %h4= rinstruction[0]
+    %table.table.table-condensed.table-bordered
+      %tr
+        - rinstruction[1].keys.each do |arg_name|
+          %th= arg_name
+      %tr
+        - rinstruction[1].values.each do |value|
+          %td= value.inspect
+- if false
+  %table.table.table-condensed.table-border
+    %tr
+      %th raw
+      %th int32
+      %th float32
+    %tr
+      %td= locals[:vm].instruction_arg_at_type(:int32,locals[:pos]).inspect
+      %td= Gta3Vm::Vm::DataTypeMethods.arg_to_native( locals[:vm].instruction_arg_at_type(:int32,locals[:pos]) ).inspect
+      %td= Gta3Vm::Vm::DataTypeMethods.arg_to_native( locals[:vm].instruction_arg_at_type(:float32,locals[:pos]) ).inspect

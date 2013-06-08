@@ -76,6 +76,29 @@ class Gta3Vm::Memory < String
     # puts self.opcode_map.inspect
   end
 
+  # TODO: Cache?
+  attr_accessor :_start_of_opcode_at_cache
+  def start_of_opcode_at(address)
+    self._start_of_opcode_at_cache ||= {}
+    if pos = self._start_of_opcode_at_cache[address]
+      pos
+    else
+      pos = self._start_of_opcode_at(address)
+      self._start_of_opcode_at_cache[address] = pos
+      pos
+    end
+  end
+
+  def _start_of_opcode_at(address)
+    return nil if address < self.structure[:code_main].begin
+    return nil if address > self.structure[:code_main].end # FIXME: should be last mission/end of script
+    map_index = self.opcode_map.size - 1
+    until address >= self.opcode_map[map_index]
+      map_index -= 1
+    end
+    self.opcode_map[map_index]
+  end
+
   def read(offset,bytes = 1)
     self[(offset)...(offset+bytes)]
   end

@@ -1,0 +1,3 @@
+- memory.each_with_index do |byte,index|
+  - pos = mem_begin + index
+  %span{class: host.classes_for_memory_pos(pos)}= vm.hex(byte)
