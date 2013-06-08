@@ -57,7 +57,13 @@ class Gta3Vm::Opcodes
       # puts opcode_name
       
       args_def = {}
-      arg_count.times{ |i| args_def["arg_#{i}"] = -1 }
+      if arg_count == -1
+        args_def[:var_args] = -1
+      else
+        arg_count.times{ |i| args_def[:"arg_#{i}"] = -1 }
+      end
+
+
       opcode(opcode,"auto_#{opcode_name}",args_def) { |args|
         puts "  !!! WARNING: opcode #{opcode} is auto-generated and NOOP"
       }

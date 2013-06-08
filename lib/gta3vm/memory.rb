@@ -73,8 +73,7 @@ class Gta3Vm::Memory < String
         self.opcode_map << opcode_address
       end
 
-    puts self.opcode_map.inspect
-    puts "Disassembled #{self.opcode_map.size} opcodes (#{self.memory.size} bytes) in #{"%.4f"%t.real} secs"
+    # puts self.opcode_map.inspect
   end
 
   def read(offset,bytes = 1)

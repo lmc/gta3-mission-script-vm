@@ -73,6 +73,8 @@ class Gta3Vm::Vm
     opcode = memory.read(offset,2)
 
     unless definition = opcodes.definition_for(opcode)
+      puts "!!!"
+      puts hex( memory.read(offset - 8,16) )
       raise InvalidOpcode, "#{hex(opcode)} @ #{offset}"
     end
 
