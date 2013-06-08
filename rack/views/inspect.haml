@@ -1,4 +1,3 @@
-%h3= locals[:pos]
 - if instruction_pos = locals[:vm].memory.start_of_opcode_at(locals[:pos])
   - if instruction = locals[:vm].instruction_at(instruction_pos) rescue nil
     - rinstruction = instruction.to_ruby(locals[:vm])
