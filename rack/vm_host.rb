@@ -98,20 +98,25 @@ class VmHost < Sinatra::Base
     # return "pos_#{pos}"
     pos = pos.to_i
     # Instrumentation.time_block("VmHost#_classes_for_memory_pos"){
+    extra = ""
     classes = []
-    classes = ["pos_#{pos}"]
+    classes = ["pos_#{pos}","mem"]
     classes << "current_pc" if pos == $exe.pc
     if opcode_start = $vm.memory.start_of_opcode_at(pos)
       classes << "instruction"
       if opcode_start == pos
         classes << "instruction_begin" << "instruction_opcode"
+        opcode = $vm.memory.read(pos,2)
+        opcode_def = $vm.opcodes.definition_for(opcode)
+        opcode_name = opcode_def.sym_name.gsub(/^auto_[0-9a-f]+_/i,'')
+        extra = "instruction_name'>#{opcode_name}</span><span class='"
       elsif opcode_start + 1 == pos
         classes << "instruction_opcode"
       else
         classes << "instruction_middle"
       end
     end
-    classes.join(" ")
+    extra + classes.join(" ")
     # }
   end
 

@@ -111,9 +111,11 @@ class VmClient
   build_memory_contents_addresses: =>
     @memory_addresses_el.html("")
 
+    first_mem_left = @memory_el.find('span.instruction_name + span.mem').first().css("background-color","#000").position().left
     for el in @memory_el.find('span')
       el = $(el)
-      if el.position().left == 0
+      console.log("first_mem_left: #{first_mem_left}")
+      if el.position().left == first_mem_left
         console.log(el)
         console.log(el[0].className)
         if matches = el[0].className.match(/pos_(\d+)/)
@@ -158,8 +160,11 @@ class VmClient
           prev.addClass("inspect_instruction")
           prev = prev.prev()
         prev.addClass("inspect_instruction")
+        prev = prev.prev()
+        if prev.hasClass("instruction_name")
+          prev.addClass("inspect_instruction")
         next = memory_el.next()
-        until next.hasClass("instruction_begin")
+        until next.hasClass("instruction_begin") || next.hasClass("instruction_name")
           next.addClass("inspect_instruction")
           next = next.next()
     )

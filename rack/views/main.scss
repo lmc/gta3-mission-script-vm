@@ -72,6 +72,10 @@
   .contents {
     left: 100px;
     width: 672px;
+
+    .instruction_name {
+      display: none;
+    }
   }
 
   .contents_addresses {
@@ -90,6 +94,19 @@
       border-right: 1px #aaa solid;
       border-bottom: 1px #aaa dotted;
       width: 90px;
+    }
+  }
+
+  .contents.break-on-instruction-begin {
+    span.instruction_name {
+      display: inline;
+      clear: both;
+      width: 150px;
+      overflow-x: scroll;
+      text-align: left;
+    }
+    span.instruction_begin {
+      clear: none;
     }
   }
 
