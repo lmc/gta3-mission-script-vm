@@ -14,13 +14,16 @@
       %button#btn-memory-update_incr.btn +F
     %div.pull-right
       %label
+        %input#memory_break_on_instructions{type: "checkbox"}
+        Raw?F
+      %label
         %input#memory_follow_pc{type: "checkbox"}
         Follow PC?F
       %label
         Size
         %input#memory_window.input-mini{type: "text", placeholder: "Window"}
       %button#btn-memory-update.btn.btn-primary Update
-  .well
+  %div
     %form.form-inline
       Inspect
       %input#memory_inspect_at.span2{type: "text", placeholder: "Inspect atF"}
@@ -28,4 +31,7 @@
         %button#memory_inspect_instruction_prev.btn Prev Inst.F
         %button#memory_inspect_instruction_next.btn Next Inst.F
     .inspect
-  .contents
+  .well.contents_container
+    .contents_addresses
+    .contents.break-on-instruction-begin
+    .clearfix

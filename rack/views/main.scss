@@ -1,9 +1,19 @@
 #memory {
 
-  .contents {
-    width: 672px;
-    height: 500px;
+  .inspect {
+    min-height: 100px;
+  }
+
+  .contents_container {
+    position: relative;
+    width: 772px; // ((20px + 1px border) * 32 cells wide) + 100px addresses sidebar
+    height: 400px;
+
     overflow-y: scroll;
+  }
+
+  .contents, .contents_addresses {
+    position: absolute;
 
     font-family: monospace;
 
@@ -49,5 +59,40 @@
       }
 
     }
+
+    &.break-on-instruction-begin {
+      span.instruction_begin {
+        clear: left;
+      }
+    }
+
   }
+
+
+  .contents {
+    left: 100px;
+    width: 672px;
+  }
+
+  .contents_addresses {
+    left: 0px;
+    width: 100px;
+    padding-top: 1px;
+
+    span {
+      display: block;
+      float: none;
+      clear: both;
+      height: 20px;
+      text-align: right;
+      padding-right: 10px;
+      border: none;
+      border-right: 1px #aaa solid;
+      border-bottom: 1px #aaa dotted;
+      width: 90px;
+    }
+  }
+
+
+
 }

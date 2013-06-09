@@ -38,9 +38,9 @@ class VmHost < Sinatra::Base
   end
 
   get "/inspect/:pos" do
-    Instrumentation.instrument {
+    # Instrumentation.instrument {
     haml :inspect, layout: false, locals: {pos: params[:pos].to_i, vm: $vm}
-    }
+    # }
   end
 
   get "/memory/:mem_begin/:mem_end" do

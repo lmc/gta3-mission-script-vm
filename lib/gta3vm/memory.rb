@@ -80,11 +80,18 @@ class Gta3Vm::Memory < String
   attr_accessor :_start_of_opcode_at_cache
   def start_of_opcode_at(address)
     self._start_of_opcode_at_cache ||= {}
-    if pos = self._start_of_opcode_at_cache[address]
-      pos
+    if self._start_of_opcode_at_cache.key?(address)
+      self._start_of_opcode_at_cache[address]
     else
       pos = self._start_of_opcode_at(address)
-      self._start_of_opcode_at_cache[address] = pos
+      # cache from address down to pos
+      if pos
+        (pos..(address)).each do |opcode_pos|
+          self._start_of_opcode_at_cache[opcode_pos] = pos
+        end
+      else
+        self._start_of_opcode_at_cache[address] = nil
+      end
       pos
     end
   end
@@ -92,6 +99,8 @@ class Gta3Vm::Memory < String
   def _start_of_opcode_at(address)
     return nil if address < self.structure[:code_main].begin
     return nil if address > self.structure[:code_main].end # FIXME: should be last mission/end of script
+    # TODO: bsearch?
+    # <=> return 0 for results, <> to guide bsearch
     map_index = self.opcode_map.size - 1
     until address >= self.opcode_map[map_index]
       map_index -= 1

@@ -17,11 +17,16 @@ class VmClient
     @btn_tick.on('click',@btn_tick_click)
     @btn_reset = $('#btn-reset')
     @btn_reset.on('click',@btn_reset_click)
+
     @memory_el = $('#memory .contents')
     @memory_window = @memory_el.find('span').length / 2
     @memory_inspect_el = $('#memory .inspect')
     @memory_els = $('#memory .contents')
     @memory_els.on('click',@memory_els_click)
+
+    @memory_addresses_el = $('#memory .contents_addresses')
+
+
     @btn_memory_view_start = $('#memory_start')
     @btn_memory_view_start.val(@memory_view_start)
     @btn_memory_view_window = $('#memory_window')
@@ -75,7 +80,7 @@ class VmClient
     low = @memory_view_start - @memory_view_window
     low = 0 if low < 0
     high = @memory_view_start + @memory_view_window
-    high = @memory_size if high > @memory_size
+    # high = @memory_size if high > @memory_size
 
     console.log("low: #{low} - high: #{high}")
     # for pos in [low..high]
@@ -88,9 +93,23 @@ class VmClient
     # @memory_el.find(".pos_#{@cpu.pc}").addClass('current_pc')
     $.ajax("/memory/#{low}/#{high}").success( (data) =>
       @memory_el.html(data)
+      @build_memory_contents_addresses()
     )
 
     false
+
+  build_memory_contents_addresses: =>
+    @memory_addresses_el.html("")
+
+    for el in @memory_el.find('span')
+      el = $(el)
+      if el.position().left == 0
+        console.log(el)
+        console.log(el[0].className)
+        if matches = el[0].className.match(/pos_(\d+)/)
+          pos = parseInt(matches[1])
+          addr_el = $("<span>#{pos}</span>")
+          @memory_addresses_el.append(addr_el)
 
   memory_els_click: (event) =>
     console.log("memory_els_click")
