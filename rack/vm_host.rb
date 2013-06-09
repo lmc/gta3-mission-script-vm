@@ -69,7 +69,12 @@ class VmHost < Sinatra::Base
     hexes.each{ |byte|
       pos += 1
       str << "<span class='"
-      str << classes_for_memory_pos(pos)
+      classes = classes_for_memory_pos(pos)
+      # HACK: include a placeholder name if we don't have one
+      if pos == mem_begin && classes !~ /instruction_name/
+        classes = "instruction_name'>...</span> <span class='" + classes
+      end
+      str << classes
       str << "'>"
       str << byte
       str << "</span> "

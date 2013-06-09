@@ -9,7 +9,7 @@ class VmClient
 
     @memory = []
     @memory_size = 0
-    @memory_view_start = 110000
+    @memory_view_start = 200000
     @memory_view_window = 512
     @memory_inspect_at = 110000
 
@@ -98,12 +98,12 @@ class VmClient
     console.log("low: #{low} - high: #{high}")
     $.ajax("/memory/#{low}/#{high}").success( (data) =>
       @memory_el.html(data)
-      @build_memory_contents_addresses()
       @memory_raw_el = $('#memory #memory_break_on_instructions')
       if !@memory_raw_el.prop("checked")
         @memory_el.addClass("break-on-instruction-begin")
       else
         @memory_el.removeClass("break-on-instruction-begin")
+      @build_memory_contents_addresses()
     )
 
     false
@@ -112,9 +112,9 @@ class VmClient
     @memory_addresses_el.html("")
 
     first_mem_left = @memory_el.find('span.instruction_name + span.mem').first().css("background-color","#000").position().left
-    for el in @memory_el.find('span')
+    for el in @memory_el.find('span.mem')
       el = $(el)
-      console.log("first_mem_left: #{first_mem_left}")
+      console.log("first_mem_left: #{first_mem_left}, el.position().left: #{el.position().left}")
       if el.position().left == first_mem_left
         console.log(el)
         console.log(el[0].className)
@@ -156,9 +156,14 @@ class VmClient
       # FIXME: breaks awfully if clicked on last instruction of editor
       if memory_el.hasClass("instruction")
         prev = memory_el
-        until prev.hasClass("instruction_begin")
+        until prev.hasClass("instruction_begin") || prev.hasClass("instruction_name")
           prev.addClass("inspect_instruction")
           prev = prev.prev()
+
+        # HACK:
+        if prev.hasClass("instruction_name")
+          prev = prev.next().next()
+
         prev.addClass("inspect_instruction")
         prev = prev.prev()
         if prev.hasClass("instruction_name")

@@ -9,6 +9,7 @@
     width: 772px; // ((20px + 1px border) * 32 cells wide) + 100px addresses sidebar
     height: 400px;
 
+    overflow-x: scroll;
     overflow-y: scroll;
   }
 
@@ -71,7 +72,6 @@
 
   .contents {
     left: 100px;
-    width: 672px;
 
     .instruction_name {
       display: none;
@@ -98,6 +98,8 @@
   }
 
   .contents.break-on-instruction-begin {
+    width: 10000px;
+
     span.instruction_name {
       display: inline;
       clear: both;
