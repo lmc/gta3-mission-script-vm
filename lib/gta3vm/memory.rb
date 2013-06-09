@@ -1,3 +1,5 @@
+require 'binary_search/pure'
+
 class Gta3Vm::Memory < String
   include Gta3Vm::Logger
 
@@ -79,6 +81,7 @@ class Gta3Vm::Memory < String
   # TODO: Cache?
   attr_accessor :_start_of_opcode_at_cache
   def start_of_opcode_at(address)
+    Instrumentation.time_block("Memory#start_of_opcode_at"){
     self._start_of_opcode_at_cache ||= {}
     if self._start_of_opcode_at_cache.key?(address)
       self._start_of_opcode_at_cache[address]
@@ -94,6 +97,7 @@ class Gta3Vm::Memory < String
       end
       pos
     end
+    }
   end
 
   def _start_of_opcode_at(address)
@@ -102,14 +106,33 @@ class Gta3Vm::Memory < String
     # TODO: bsearch?
     # <=> return 0 for results, <> to guide bsearch
     map_index = self.opcode_map.size - 1
-    until address >= self.opcode_map[map_index]
-      map_index -= 1
-    end
-    self.opcode_map[map_index]
+    # puts "_start_of_opcode_at: map_index: #{map_index}"
+    # until address >= self.opcode_map[map_index]
+      # map_index -= 1
+    # end
+    last_result = nil
+    result = self.opcode_map.binary_search { |map_value|
+      # puts "_start_of_opcode_at: map_value: #{map_value}, address: #{address}"
+      ret = address <=> map_value
+
+      if ret == 1
+        last_result = map_value
+      end
+
+      # puts "_start_of_opcode_at: ret: #{ret.inspect}"
+      ret
+    }
+    # puts "_start_of_opcode_at: address: #{address}, result: #{result}, last_result: #{last_result}"
+
+    # self.opcode_map[map_index]
+
+    result || last_result
   end
 
   def read(offset,bytes = 1)
+    # Instrumentation.time_block("Memory#read"){
     self[(offset)...(offset+bytes)]
+    # }
   end
 
   def write(address,bytes,byte_array)

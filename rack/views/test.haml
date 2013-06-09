@@ -23,6 +23,10 @@
         Size
         %input#memory_window.input-mini{type: "text", placeholder: "Window"}
       %button#btn-memory-update.btn.btn-primary Update
+  .well.contents_container
+    .contents_addresses
+    .contents.break-on-instruction-begin
+    .clearfix
   %div
     %form.form-inline
       Inspect
@@ -31,7 +35,3 @@
         %button#memory_inspect_instruction_prev.btn Prev Inst.F
         %button#memory_inspect_instruction_next.btn Next Inst.F
     .inspect
-  .well.contents_container
-    .contents_addresses
-    .contents.break-on-instruction-begin
-    .clearfix

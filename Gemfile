@@ -2,7 +2,7 @@ source "https://rubygems.org"
 
 gem "activesupport"
 
-# gem "rack"
+gem "rack"
 gem "rspec"
 
 gem "thin"
@@ -12,4 +12,5 @@ gem "haml"
 gem "sass"
 gem "coffee-script"
 gem "json"
+gem "binary_search", github: "tyler/binary_search"
 

@@ -75,7 +75,8 @@ class VmClient
     @memory_view_start  = parseInt( @btn_memory_view_start.val() )
     @memory_view_window = parseInt( @btn_memory_view_window.val() )
 
-    @memory_el.html("")
+    @memory_addresses_el.html("")
+    @memory_el.html("<div class='progress progress-striped active'><div class='bar' style='width: 100%'></div></div>")
 
     low = @memory_view_start - @memory_view_window
     low = 0 if low < 0
