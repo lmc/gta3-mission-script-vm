@@ -9,9 +9,9 @@ class VmClient
 
     @memory = []
     @memory_size = 0
-    @memory_view_start = 0
+    @memory_view_start = 110000
     @memory_view_window = 512
-    @memory_inspect_at = 0
+    @memory_inspect_at = 110000
 
   init: ->
     @btn_tick = $('#btn-tick')
@@ -23,6 +23,7 @@ class VmClient
     @memory_window = @memory_el.find('span').length / 2
     @memory_inspect_el = $('#memory .inspect')
     @memory_inspect_pos_el = $('#memory #memory_inspect_at')
+    @memory_inspect_pos_el.val(@memory_inspect_at)
 
     @memory_do_inspect = $('#memory #memory_do_inspect')
     @memory_do_inspect.on('click',@memory_do_inspect_click)
@@ -40,6 +41,8 @@ class VmClient
     @btn_memory_view_update = $('#btn-memory-update')
     @btn_memory_view_update.on('click',@btn_memory_view_update_click)
 
+    @btn_memory_view_update.click()
+    setTimeout(( => @memory_do_inspect.click() ), 100 )
 
 
     true
@@ -96,6 +99,11 @@ class VmClient
     $.ajax("/memory/#{low}/#{high}").success( (data) =>
       @memory_el.html(data)
       @build_memory_contents_addresses()
+      @memory_raw_el = $('#memory #memory_break_on_instructions')
+      if !@memory_raw_el.prop("checked")
+        @memory_el.addClass("break-on-instruction-begin")
+      else
+        @memory_el.removeClass("break-on-instruction-begin")
     )
 
     false
@@ -136,12 +144,14 @@ class VmClient
     $.ajax("/inspect/#{pos}").success( (data) =>
       @memory_inspect_el.html(data)
       memory_el = @memory_el.find(".pos_#{pos}")
-      console.log(memory_el)
+      # console.log(memory_el)
       # memory_el.click()
       @memory_el.find(".inspect_pos").removeClass("inspect_pos")
       @memory_el.find(".inspect_instruction").removeClass("inspect_instruction")
-      
+
+      # memory_el.get(0).scrollIntoView()
       memory_el.addClass("inspect_pos")
+      # FIXME: breaks awfully if clicked on last instruction of editor
       if memory_el.hasClass("instruction")
         prev = memory_el
         until prev.hasClass("instruction_begin")
