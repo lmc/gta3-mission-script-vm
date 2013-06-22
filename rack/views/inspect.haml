@@ -9,6 +9,8 @@
             = arg_name
             -
             = Gta3Vm::Vm::DataTypeMethods::TYPE_SHORTHANDS_INV[ instruction.args[idx][0] ].inspect
+            - if instruction.args[idx][0] == 0x02
+              = locals[:vm].memory.variable_label_for( rinstruction[1].values[idx] )
       %tr
         - rinstruction[1].values.each do |value|
           %td= value.inspect

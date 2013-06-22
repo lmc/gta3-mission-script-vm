@@ -48,19 +48,34 @@ class Gta3Vm::Opcodes
   def parse_from_scm_ini(path_to_ini)
     File.open(path_to_ini,"r").read.each_line do |line|
       next unless line =~ /\A([0-9a-f]{4})\=(-?\d+),(.*)?/i
-      opcode, arg_count, notes = $1.upcase, $2.to_i, $3
-      puts line
+      opcode, arg_count, o_notes = $1.upcase, $2.to_i, $3
+      # puts o_notes
 
       # try to hack something nice out of the notes
-      notes = notes.gsub(/(%.*?%)/im,'').strip.gsub(/;/,'').gsub(/\s+/,'_')
+      notes = o_notes.gsub(/(%.*?%)/im,'').strip.gsub(/;/,'').gsub(/\s+/,'_')
       opcode_name = "#{opcode}_#{notes}"
       # puts opcode_name
+
+      # arg_names = {}
+
+      # matches = o_notes.scan(/(\w+)\s+\%(\d+)([a-z]+)\%/)
+      # if matches.size > 0
+      #   matches.each do |row|
+      #     index = row[1].to_i
+      #     arg_names[index] = row[0]
+      #   end
+      #   puts "arg_names: #{arg_names.inspect}"
+      # end
       
       args_def = {}
       if arg_count == -1
         args_def[:var_args] = -1
       else
-        arg_count.times{ |i| args_def[:"arg_#{i}"] = -1 }
+        arg_count.times{ |i|
+          # arg_name = arg_names[i] || "arg_#{i}"
+          # args_def[arg_name.to_sym] = -1
+          args_def[:"arg_#{i}"] = -1
+        }
       end
 
 

@@ -6,6 +6,7 @@ class Gta3Vm::Memory < String
   attr_accessor :vm
   attr_accessor :structure
   attr_accessor :opcode_map
+  attr_accessor :variable_labels
 
   def initialize(vm,*args)
     self.vm = vm
@@ -54,6 +55,7 @@ class Gta3Vm::Memory < String
 
     log "structure: #{self.structure.inspect}"
     build_opcode_map
+    build_variable_labels
   end
 
   def build_opcode_map
@@ -76,6 +78,23 @@ class Gta3Vm::Memory < String
       end
 
     # puts self.opcode_map.inspect
+  end
+
+  def build_variable_labels
+    self.variable_labels = {}
+    File.open("./data/vc/CustomVariables.ini","r") do |f|
+      f.each_line do |line|
+        if matches = line.scan(/(\d+)=(\w+)/)[0]
+          var_number, label = matches
+          pg_value = 4 * var_number.to_i
+          self.variable_labels[pg_value] = label
+        end
+      end
+    end
+  end
+
+  def variable_label_for(pg_value)
+    self.variable_labels[pg_value]
   end
 
   # TODO: Cache?
