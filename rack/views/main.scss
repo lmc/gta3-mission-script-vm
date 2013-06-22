@@ -1,16 +1,24 @@
 #memory {
+  width: 436px;
+
+  h2 {
+    float: left;
+  }
 
   .inspect {
     min-height: 100px;
   }
 
   .contents_container {
+    clear: both;
     position: relative;
-    width: 772px; // ((20px + 1px border) * 32 cells wide) + 100px addresses sidebar
+    width: 436px; // ((20px + 1px border) * 16 cells wide) + 100px addresses sidebar
     height: 400px;
 
     overflow-x: scroll;
     overflow-y: scroll;
+
+    border: 1px #AAA solid;
   }
 
   .contents, .contents_addresses {
@@ -51,6 +59,11 @@
         border-color: rgb(64,128,64);
         color: rgb(64,128,64);
         background-color: rgb(192,255,192);
+      }
+      &.instruction_opcode_arg {
+        color: rgb(64,128,255);
+        background-color: rgb(224,255,255);
+        border-color: rgb(64,128,255);
       }
       &.inspect_pos {
         text-decoration: underline !important;
@@ -113,5 +126,9 @@
   }
 
 
+
+  #inspect_toolbar {
+    margin-top: 1em;
+  }
 
 }

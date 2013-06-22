@@ -32,6 +32,7 @@ class VmClient
     @memory_els.on('click',@memory_els_click)
 
     @memory_addresses_el = $('#memory .contents_addresses')
+    @memory_addresses_el.on('click',@memory_els_click)
 
 
     @btn_memory_view_start = $('#memory_start')
@@ -111,7 +112,7 @@ class VmClient
   build_memory_contents_addresses: =>
     @memory_addresses_el.html("")
 
-    first_mem_left = @memory_el.find('span.instruction_name + span.mem').first().css("background-color","#000").position().left
+    first_mem_left = @memory_el.find('span.instruction_name + span.mem').first().css("color","#000").position().left
     for el in @memory_el.find('span.mem')
       el = $(el)
       console.log("first_mem_left: #{first_mem_left}, el.position().left: #{el.position().left}")
@@ -120,7 +121,7 @@ class VmClient
         console.log(el[0].className)
         if matches = el[0].className.match(/pos_(\d+)/)
           pos = parseInt(matches[1])
-          addr_el = $("<span>#{pos}</span>")
+          addr_el = $("<span class='pos_#{pos}'>#{pos}</span>")
           @memory_addresses_el.append(addr_el)
 
   memory_els_click: (event) =>
@@ -128,8 +129,15 @@ class VmClient
     memory_el = $(event.target)
     event.preventDefault()
 
-    if matches = event.target.className.match(/pos_(\d+)/)
+    element = event.target
+
+    if element.className.match(/instruction_name/)
+      element = $(element).next('.instruction')[0]
+
+    if matches = element.className.match(/pos_(\d+)/)
       pos = matches[1]
+
+    if pos
       @memory_inspect_at = parseInt(pos)
       @memory_inspect_pos_el.val(@memory_inspect_at)
       @do_inspect_at(@memory_inspect_at)

@@ -118,6 +118,12 @@ class VmHost < Sinatra::Base
       elsif opcode_start + 1 == pos
         classes << "instruction_opcode"
       else
+        if instruction = $vm.instruction_at(opcode_start)
+          arg_offsets = instruction.arg_start_offsets.map{|i_off| opcode_start + i_off }
+          if arg_offsets.include?(pos)
+            classes << "instruction_opcode_arg"
+          end
+        end
         classes << "instruction_middle"
       end
     end

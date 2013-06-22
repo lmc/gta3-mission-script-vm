@@ -1,12 +1,14 @@
-%h4= locals[:pos]
 - if instruction_pos = locals[:vm].memory.start_of_opcode_at(locals[:pos])
   - if instruction = locals[:vm].instruction_at(instruction_pos) rescue nil
     - rinstruction = instruction.to_ruby(locals[:vm])
     %h4= rinstruction[0]
     %table.table.table-condensed.table-bordered
       %tr
-        - rinstruction[1].keys.each do |arg_name|
-          %th= arg_name
+        - rinstruction[1].keys.each_with_index do |arg_name,idx|
+          %th
+            = arg_name
+            -
+            = Gta3Vm::Vm::DataTypeMethods::TYPE_SHORTHANDS_INV[ instruction.args[idx][0] ].inspect
       %tr
         - rinstruction[1].values.each do |value|
           %td= value.inspect

@@ -48,6 +48,16 @@ class Gta3Vm::Instruction < NestedByteArray
     ]
   end
 
+  def arg_start_offsets
+    offset = 2 # opcode is 2 bytes, args start after
+    offsets = []
+    self.args.each do |arg|
+      offsets << offset
+      offset += arg.size
+    end
+    offsets
+  end
+
 
 
   class Gta3Vm::Instruction::Opcode < NestedByteArray

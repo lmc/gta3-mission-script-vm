@@ -45,6 +45,7 @@ module Gta3Vm::Vm::DataTypeMethods
     :string  => 0x09,
     :vstring => 0x0e
   }
+  TYPE_SHORTHANDS_INV = TYPE_SHORTHANDS.invert
   PACK_CHARS_FOR_DATA_TYPE = {
    -0x01 => "S<",
     0x01 => "l<",

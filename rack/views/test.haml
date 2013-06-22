@@ -6,13 +6,12 @@
 
 
 #memory.well
-  %h2 Memory
   %form.form-inline
     %div.input-prepend.input-append
       %button#btn-memory-update_decr.btn -F
-      %input#memory_start.span4{type: "text", placeholder: "Start"}
+      %input#memory_start.input-mini{type: "text", placeholder: "Start"}
       %button#btn-memory-update_incr.btn +F
-    %div.pull-right
+    %div.controls
       %label
         %input#memory_break_on_instructions{type: "checkbox", name: "", value: "1"}
         Raw?
@@ -23,16 +22,15 @@
         Size
         %input#memory_window.input-mini{type: "text", placeholder: "Window"}
       %button#btn-memory-update.btn.btn-primary Update
-  .well.contents_container
+  .contents_container
     .contents_addresses
     .contents.break-on-instruction-begin
     .clearfix
-  %div
-    %form.form-inline
-      Inspect
-      %input#memory_inspect_at.span2{type: "text", placeholder: "Inspect at"}
-      %button#memory_do_inspect.btn.btn-primary Inspect
-      %div.btn-group
-        %button#memory_inspect_instruction_prev.btn Prev Inst.F
-        %button#memory_inspect_instruction_next.btn Next Inst.F
-    .inspect
+  %div#inspect_toolbar
+    Inspect
+    %input#memory_inspect_at.span2{type: "text", placeholder: "Inspect at"}
+    %button#memory_do_inspect.btn.btn-primary Inspect
+    %div.btn-group
+      %button#memory_inspect_instruction_prev.btn Prev Inst.F
+      %button#memory_inspect_instruction_next.btn Next Inst.F
+  .inspect
