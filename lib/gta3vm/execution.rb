@@ -10,7 +10,7 @@ class Gta3Vm::Execution
   attr_accessor :threads
 
   attr_accessor :tick_count
-  attr_accessor :current_thread_id
+  attr_accessor :thread_id
   attr_accessor :pc
 
   def initialize(vm)
@@ -24,11 +24,9 @@ class Gta3Vm::Execution
     self.allocations = {}
     self.tick_count = 0
 
-    # self.threads = [VmThread.new(vm,self)]
-    # self.threads[0].pc = 0
-    # self.current_thread_id = 0
-
-    self.pc = 0
+    self.threads = [VmThread.new(vm,self)]
+    self.threads[0].pc = 0
+    self.thread_id = 0
   end
 
   def irb
@@ -36,10 +34,20 @@ class Gta3Vm::Execution
   end
 
   def tick
-    instruction = vm.instruction_at(pc)
+    instruction_pos = self.pc
+    instruction = vm.instruction_at(instruction_pos)
     result = dispatch_instruction(instruction)
+    self.pc = instruction_pos + instruction.size if self.pc == instruction_pos # advance past instruction if we haven't manually jumped
     self.tick_count += 1
     result
+  end
+
+  def pc
+    self.threads[self.thread_id].pc
+  end
+
+  def pc=(value)
+    self.threads[self.thread_id].pc = value
   end
 
   def dispatch_instruction(instruction)
@@ -97,18 +105,19 @@ class Gta3Vm::Execution
 
   # #####################
 
-  # class VmThread
-  #   attr_accessor :vm
-  #   attr_accessor :execution
+  class VmThread
+    attr_accessor :vm
+    attr_accessor :execution
 
-  #   attr_accessor :pc
+    attr_accessor :pc
+    attr_accessor :name
 
-  #   def initialize(vm,execution)
-  #     self.vm = vm
-  #     self.execution = execution
-  #     self.pc = 0
-  #   end
-  # end
+    def initialize(vm,execution)
+      self.vm = vm
+      self.execution = execution
+      self.pc = 0
+    end
+  end
 
   # Extra features #######
 

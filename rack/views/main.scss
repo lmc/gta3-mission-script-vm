@@ -71,6 +71,9 @@
       &.inspect_instruction {
         font-weight: bold !important;
       }
+      &.current_instruction {
+        text-decoration: underline;
+      }
 
     }
 

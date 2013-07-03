@@ -109,6 +109,10 @@ class VmHost < Sinatra::Base
     classes << "current_pc" if pos == $exe.pc
     if opcode_start = $vm.memory.start_of_opcode_at(pos)
       classes << "instruction"
+      # FIXME: wont work due to caching
+      # if $exe.threads.map(&:pc).include?(opcode_start)
+        # classes << "current_instruction"
+      # end
       if opcode_start == pos
         classes << "instruction_begin" << "instruction_opcode"
         opcode = $vm.memory.read(pos,2)
