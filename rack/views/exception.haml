@@ -1,0 +1,11 @@
+%h2 VM Exception
+%h3= Rack::Utils.escape_html(locals[:ex].message)
+
+%h4 Current instruction
+%pre= locals[:exe].current_instruction.inspect
+%pre= "#{$vm.hex(locals[:exe].current_instruction[0].reverse)}  #{locals[:exe].current_instruction.to_ruby(locals[:vm]).inspect}"
+
+%h4 Backtrace
+%pre= locals[:ex].backtrace.reject{|l| l =~%r(/gems/1.9.1/gems/) }.join("\n")
+
+

@@ -1,8 +1,23 @@
-#memory {
+body {
+  zoom: 0.525;
+}
+
+.memory {
   width: 436px;
 
   h2 {
     float: left;
+  }
+
+  .memory-controls-form {
+    height: 30px;
+  }
+
+  .inputs-left {
+    float: left;
+  }
+  .controls {
+    float: right;
   }
 
   .inspect {
@@ -74,6 +89,9 @@
       &.current_instruction {
         text-decoration: underline;
       }
+      &.current_instruction.instruction_name, &.current_instruction.address {
+        color: rgb(64,192,64);
+      }
 
     }
 
@@ -114,13 +132,14 @@
   }
 
   .contents.break-on-instruction-begin {
-    width: 10000px;
+    width: 30000px;
 
     span.instruction_name {
       display: inline;
       clear: both;
       width: 150px;
-      overflow-x: scroll;
+//      overflow-x: scroll;
+      overflow-x: hidden;
       text-align: left;
     }
     span.instruction_begin {
@@ -134,4 +153,10 @@
     margin-top: 1em;
   }
 
+}
+
+.thread {
+  max-width: 450px;
+  float: left;
+  margin-right: 10px;
 }

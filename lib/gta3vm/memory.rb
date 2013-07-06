@@ -100,7 +100,7 @@ class Gta3Vm::Memory < String
   # TODO: Cache?
   attr_accessor :_start_of_opcode_at_cache
   def start_of_opcode_at(address)
-    Instrumentation.time_block("Memory#start_of_opcode_at"){
+    # Instrumentation.time_block("Memory#start_of_opcode_at"){
     self._start_of_opcode_at_cache ||= {}
     if self._start_of_opcode_at_cache.key?(address)
       self._start_of_opcode_at_cache[address]
@@ -116,7 +116,7 @@ class Gta3Vm::Memory < String
       end
       pos
     end
-    }
+    # }
   end
 
   def _start_of_opcode_at(address)

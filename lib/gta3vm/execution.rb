@@ -13,6 +13,12 @@ class Gta3Vm::Execution
   attr_accessor :thread_id
   attr_accessor :pc
 
+  attr_accessor :switch_on_new_thread
+
+  attr_accessor :current_instruction
+  attr_accessor :dispatched_method
+  attr_accessor :dispatched_args
+
   def initialize(vm)
     self.vm = vm
     reset
@@ -24,9 +30,11 @@ class Gta3Vm::Execution
     self.allocations = {}
     self.tick_count = 0
 
-    self.threads = [VmThread.new(vm,self)]
-    self.threads[0].pc = 0
+    self.threads = []
+    create_thread(0)
     self.thread_id = 0
+
+    self.switch_on_new_thread = true
   end
 
   def irb
@@ -35,11 +43,21 @@ class Gta3Vm::Execution
 
   def tick
     instruction_pos = self.pc
-    instruction = vm.instruction_at(instruction_pos)
-    result = dispatch_instruction(instruction)
-    self.pc = instruction_pos + instruction.size if self.pc == instruction_pos # advance past instruction if we haven't manually jumped
+    instruction_thread = self.thread_id
+    self.current_instruction = vm.instruction_at(instruction_pos)
+    result = dispatch_instruction(current_instruction)
+
+    # advance past instruction if we haven't manually jumped
+    if self.threads[instruction_thread].pc == instruction_pos
+      self.threads[instruction_thread].pc = instruction_pos + current_instruction.size
+    end
     self.tick_count += 1
     result
+  end
+
+  def create_thread(pc,is_mission = false)
+    self.threads << VmThread.new(vm,self,pc)
+    self.thread_id = self.threads.size - 1 if self.switch_on_new_thread
   end
 
   def pc
@@ -58,15 +76,26 @@ class Gta3Vm::Execution
   end
 
   def allocate(address,data_type,value = nil)
+    log "address: #{address.inspect}, data_type: #{data_type.inspect}, value: #{value.inspect}"
     raise ArgumentError, "address is nil" unless address
     raise ArgumentError, "data_type is nil" unless data_type
     size = 4
 
-    to_write = vm.native_to_arg_value(data_type,value)
+    store_as = { 0x01=>0x01, 0x04=>0x01, 0x05=>0x01 }[data_type]
+    raise ArgumentError, "no store_as entry for data_type #{data_type.inspect}" unless store_as
+
+    to_write = vm.native_to_arg_value(store_as,value)
     raise ArgumentError, "incorrect size #{to_write.inspect}" unless to_write.size == size
 
     self.allocations[address] = data_type
     write(address,size,to_write)
+  end
+
+  def read_as_arg(offset,arg_type,bytes_to_read = nil)
+    arg_type = Gta3Vm::Vm::DataTypeMethods::TYPE_SHORTHANDS[arg_type] if arg_type.is_a?(Symbol)
+    bytes_to_read ||= Gta3Vm::Vm::DataTypeMethods.bytes_to_read_for_arg_data_type(arg_type,offset)
+    arg = Gta3Vm::Instruction::Arg.new([arg_type,vm.memory.read(offset,bytes_to_read)])
+    Gta3Vm::Vm::DataTypeMethods.arg_to_native(arg)
   end
 
   def write(address,size,to_write)
@@ -112,10 +141,10 @@ class Gta3Vm::Execution
     attr_accessor :pc
     attr_accessor :name
 
-    def initialize(vm,execution)
+    def initialize(vm,execution,pc = 0)
       self.vm = vm
       self.execution = execution
-      self.pc = 0
+      self.pc = pc
     end
   end
 

@@ -20,7 +20,7 @@ class Gta3Vm::Opcodes
       pg = :pg
       int_or_float, int_or_var, float_or_var = :int_or_float, :int_or_var, :float_or_var
       log "load_opcode_definitions: loading #{path}"
-      eval(File.read(path))
+      eval(File.read(path),nil,File.join(Dir.pwd,path))
     end
   end
 

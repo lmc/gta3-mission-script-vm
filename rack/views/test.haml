@@ -1,36 +1,48 @@
-#cpu.well
-  %h2 CPU
-  %button#btn-tick.btn.btn-primary Tick
-  %button#btn-reset.btn.btn-danger Reset
-  .contents
+#error
+
+.row.span16
+
+  .span2
+    #cpu
+      %h2 CPU
+      %div.well
+        %button#btn-tick.btn.btn-primary Tick
+        %button#btn-reset.btn.btn-danger Reset
+        .contents
+    #variables
+      %h2 Variables
+
+  #threads.span10
+    %h2 Threads
+    %div.threads
 
 
-#memory.well
-  %form.form-inline
-    %div.input-prepend.input-append
-      %button#btn-memory-update_decr.btn -F
-      %input#memory_start.input-mini{type: "text", placeholder: "Start"}
-      %button#btn-memory-update_incr.btn +F
+#memory_template
+  %form.form-inline.memory-controls-form
+    %div.input-prepend.input-append.inputs-left
+      %button.btn-memory-update_decr.btn -F
+      %input.memory_start.input-mini{type: "text", placeholder: "Start"}
+      %button.btn-memory-update_incr.btn +F
     %div.controls
       %label
-        %input#memory_break_on_instructions{type: "checkbox", name: "", value: "1"}
+        %input.memory_break_on_instructions{type: "checkbox", name: "", value: "1"}
         Raw?
       %label
-        %input#memory_follow_pc{type: "checkbox"}
+        %input.memory_follow_pc{type: "checkbox"}
         Follow PC?F
-      %label
+      %label{style: "display: none"}
         Size
-        %input#memory_window.input-mini{type: "text", placeholder: "Window"}
-      %button#btn-memory-update.btn.btn-primary Update
+        %input.memory_window.input-mini{type: "text", placeholder: "Window"}
+      %button.btn-memory-update.btn.btn-primary Update
   .contents_container
     .contents_addresses
     .contents.break-on-instruction-begin
     .clearfix
-  %div#inspect_toolbar
+  %div.inspect_toolbar
     Inspect
-    %input#memory_inspect_at.span2{type: "text", placeholder: "Inspect at"}
-    %button#memory_do_inspect.btn.btn-primary Inspect
+    %input.memory_inspect_at.span3{type: "text", placeholder: "Inspect at"}
+    %button.memory_do_inspect.btn.btn-primary Inspect
     %div.btn-group
-      %button#memory_inspect_instruction_prev.btn Prev Inst.F
-      %button#memory_inspect_instruction_next.btn Next Inst.F
+      %button.memory_inspect_instruction_prev.btn Prev Inst.F
+      %button.memory_inspect_instruction_next.btn Next Inst.F
   .inspect

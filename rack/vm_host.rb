@@ -27,9 +27,13 @@ class VmHost < Sinatra::Base
   end
 
   get "/tick" do
-    $exe.tick
-    content_type :json
-    send_tick_payload.to_json
+    begin
+      $exe.tick
+      content_type :json
+      send_tick_payload.to_json
+    rescue => ex
+      haml :exception, layout: false, locals: {ex: ex, exe: $exe, vm: $vm}
+    end
   end
 
   get "/reset" do
@@ -49,7 +53,7 @@ class VmHost < Sinatra::Base
     mem_begin = 0 if mem_begin < 0
     mem_end = $vm.memory.size if mem_end > $vm.memory.size
     memory = $vm.memory.read(mem_begin,mem_end - mem_begin).to_a
-    puts memory.inspect
+    # puts memory.inspect
     # haml :memory, layout: false, locals: {mem_begin: mem_begin, mem_end: mem_end, memory: memory, vm: $vm, exe: $exe, host: self}
     build_memory_output(mem_begin,mem_end,memory)
     }
@@ -63,9 +67,9 @@ class VmHost < Sinatra::Base
     }
     # Instrumentation.time_block("Memory#inject"){
     str = ""
-    puts "ENV: #{ENV.inspect}"
-    puts "hexes.size: #{hexes.size}"
-    puts "hexes: #{hexes.inspect}"
+    # puts "ENV: #{ENV.inspect}"
+    # puts "hexes.size: #{hexes.size}"
+    # puts "hexes: #{hexes.inspect}"
     hexes.each{ |byte|
       pos += 1
       str << "<span class='"
@@ -80,7 +84,7 @@ class VmHost < Sinatra::Base
       str << "</span> "
     }
     # }
-    puts "str.size: #{str.size}"
+    # puts "str.size: #{str.size}"
 
     str
     # }
@@ -139,7 +143,11 @@ class VmHost < Sinatra::Base
     {
       pc: $exe.pc,
       dirty_memory: $exe.dirty_memory.map{|r| r[0..1] },
-      cpu: haml(:cpu, layout: false, locals: {vm: $vm, exe: $exe})
+      cpu: haml(:cpu, layout: false, locals: {vm: $vm, exe: $exe}),
+      thread_id: $exe.thread_id,
+      thread_pcs: $exe.threads.map(&:pc),
+      thread_html: $exe.threads.each_with_index.map{|thread,thread_id| haml :thread, layout: false, locals: {thread: thread, thread_id: thread_id}},
+      current_instruction_inspect: haml(:inspect, layout: false, locals: {pos: $exe.pc, vm: $vm})
     }
   end
 
@@ -147,8 +155,6 @@ class VmHost < Sinatra::Base
   def render_memory(range)
 
   end
-
-
 
 end
 
