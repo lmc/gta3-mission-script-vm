@@ -6,11 +6,15 @@
     #cpu
       %h2 CPU
       %div.well
+        %label
+          %input#btn-auto-tick{type: "checkbox"}
+          Auto
         %button#btn-tick.btn.btn-primary Tick
         %button#btn-reset.btn.btn-danger Reset
         .contents
     #variables
       %h2 Variables
+      %div.variables
 
   #threads.span10
     %h2 Threads

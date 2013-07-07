@@ -1,0 +1,13 @@
+%table.table.table-bordered.table-condensed
+  - locals[:allocations].keys.sort.each do |key|
+    - value = locals[:allocations][key]
+    %tr
+      - begin
+        %th.address= key
+        %td.address_label
+          %span.label= Gta3Vm::Vm::DataTypeMethods::TYPE_SHORTHANDS_INV[value].inspect
+          = locals[:exe].vm.memory.variable_label_for(key)
+        %td.value= locals[:exe].read_as_arg(key,value).inspect
+      - rescue
+        bad
+        = Rack::Utils.escape_html($!.message)

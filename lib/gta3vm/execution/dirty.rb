@@ -24,7 +24,7 @@ module Gta3Vm::Execution::Dirty
     end
 
     def dirty_memory_mark(address,size)
-      puts "dirty_memory_mark(#{[address,size].inspect})"
+      # puts "dirty_memory_mark(#{[address,size].inspect})"
       @dirty_memory << [address,size,vm.memory.read(address,size)]
     end
 

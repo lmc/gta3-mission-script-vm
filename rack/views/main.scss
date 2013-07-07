@@ -1,5 +1,5 @@
 body {
-  zoom: 0.525;
+  zoom: 0.5;
 }
 
 .memory {
@@ -154,6 +154,11 @@ body {
   }
 
 }
+
+ #variables .variables {
+  height: 500px;
+  overflow-y: scroll;
+ }
 
 .thread {
   max-width: 450px;

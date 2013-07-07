@@ -25,6 +25,8 @@ class VmClient
     @btn_reset = $('#btn-reset')
     @btn_reset.on('click',@btn_reset_click)
 
+    @checkbox_tick_auto = $('#btn-auto-tick')
+
     # new MemoryViewer()
     @memory_template = $('#memory_template')
     @memory_template.remove()
@@ -58,8 +60,12 @@ class VmClient
     @auto_tick_ok = true
     @auto_tick_timer = setInterval( ( =>
       return if $('#vm-exception').length > 0
+      return if !$('#btn-auto-tick').prop('checked')
+      return if !@auto_tick_ok
+      @auto_tick_ok = false
       @btn_tick.click()
-    ), 500 )
+      # $('#error').get(0).scrollIntoView()
+    ), 100 )
 
     true
 
@@ -69,6 +75,10 @@ class VmClient
       for pos in [@memory_size..end]
         @memory.push(0)
       @memory_size = end
+
+  update_variables_html: (data) =>
+    if data.variables_html
+      $('#variables .variables').html(data.variables_html)
 
   update_thread_html: (data) =>
     console.log("update_thread_html data")
@@ -81,7 +91,7 @@ class VmClient
     $.each data.thread_html, (id,html) =>
       thread_el = $("#threads #thread_#{id}")
 
-      console.log("update_thread_html: thread_el.length: #{thread_el.length}")
+      # console.log("update_thread_html: thread_el.length: #{thread_el.length}")
       if thread_el.length == 0
         thread_el = $("<div><div class='data'></div><div class='memory'></div></div>")
         thread_el.attr('id',"thread_#{id}")
@@ -102,10 +112,11 @@ class VmClient
         @btn_memory_view_update_click(null,thread_el.find('.btn-memory-update'))
         # setTimeout( ( => thread_el.find(".memory .contents .pos_#{data.thread_pcs[id]}").click() ), 1250)
 
-      console.log("id: #{id}, thread_id: #{data.thread_id}")
+      # console.log("id: #{id}, thread_id: #{data.thread_id}")
       if id == data.thread_id
-        console.log(data.current_instruction_inspect)
-        @btn_memory_view_update_click(null,thread_el.find('.btn-memory-update'))
+        # console.log(data.current_instruction_inspect)
+        if !force_refresh
+          @btn_memory_view_update_click(null,thread_el.find('.btn-memory-update'))
         thread_el.find('.inspect').html(data.current_instruction_inspect)
 
 
@@ -115,6 +126,8 @@ class VmClient
     if $('#vm-exception').length > 0
       return
 
+    console.log("===")
+    console.log("")
     console.log("tick")
     $.ajax("/tick").
     success( (data) =>
@@ -144,6 +157,9 @@ class VmClient
         $('#cpu .contents').html(data.cpu)
 
         @update_thread_html(data)
+        @update_variables_html(data)
+
+        @auto_tick_ok = true
     )
 
     false
@@ -163,7 +179,7 @@ class VmClient
     memory_view_start  = parseInt( memory_el.find('.memory_start').val() )
     memory_view_window = parseInt( memory_el.find('.memory_window').val() )
 
-    console.log("memory_view_start: #{memory_view_start}")
+    # console.log("memory_view_start: #{memory_view_start}")
 
     contents_el = memory_el.find('.contents')
     addresses_el = memory_el.find('.contents_addresses')
@@ -193,6 +209,7 @@ class VmClient
       if c_inst_el.length > 0
         c_inst_el.addClass("current_instruction")
         addresses_el.find(".pos_#{pc}").addClass("current_instruction")
+        addresses_el.find(".pos_#{pc}").get(0).scrollIntoView()
 
         if c_inst_el.prev().hasClass("instruction_name")
           c_inst_el.prev().addClass("current_instruction")
@@ -232,13 +249,13 @@ class VmClient
     if element.className.match(/instruction_name/)
       element = $(element).next('.instruction')[0]
 
-    console.log("className: #{element.className}")
+    # console.log("className: #{element.className}")
     if matches = element.className.match(/pos_(\d+)/)
       pos = matches[1]
 
     if pos
       memory_inspect_at = parseInt(pos)
-      console.log("memory_inspect_at: #{memory_inspect_at}")
+      # console.log("memory_inspect_at: #{memory_inspect_at}")
       memory_el.find('.memory_inspect_at').val(memory_inspect_at)
       @do_inspect_at(memory_el,memory_inspect_at)
 

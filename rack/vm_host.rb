@@ -9,6 +9,7 @@ require 'gta3vm'
 class VmHost < Sinatra::Base
 
   set :logging, true
+  set :lock, true
 
   register Sinatra::Twitter::Bootstrap::Assets
 
@@ -62,9 +63,9 @@ class VmHost < Sinatra::Base
   def build_memory_output(mem_begin,mem_end,memory)
     pos = mem_begin - 1
     hexes = []
-    Instrumentation.time_block("VmHost#hexes"){
+    # Instrumentation.time_block("VmHost#hexes"){
     hexes = Gta3Vm::Vm::Helpers.hex_a(memory).to_a
-    }
+    # }
     # Instrumentation.time_block("Memory#inject"){
     str = ""
     # puts "ENV: #{ENV.inspect}"
@@ -147,8 +148,17 @@ class VmHost < Sinatra::Base
       thread_id: $exe.thread_id,
       thread_pcs: $exe.threads.map(&:pc),
       thread_html: $exe.threads.each_with_index.map{|thread,thread_id| haml :thread, layout: false, locals: {thread: thread, thread_id: thread_id}},
-      current_instruction_inspect: haml(:inspect, layout: false, locals: {pos: $exe.pc, vm: $vm})
+      current_instruction_inspect: haml(:inspect, layout: false, locals: {pos: $exe.pc, vm: $vm}),
+      variables_html: render_variables_html
     }
+  end
+
+  def render_variables_html
+    if $exe.dirty_memory.size == 0
+      nil
+    else
+      haml(:variables, layout: false, locals: {allocations: $exe.allocations, exe: $exe})
+    end
   end
 
 

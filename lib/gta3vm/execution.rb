@@ -34,7 +34,7 @@ class Gta3Vm::Execution
     create_thread(0)
     self.thread_id = 0
 
-    self.switch_on_new_thread = true
+    self.switch_on_new_thread = false
   end
 
   def irb
@@ -51,6 +51,9 @@ class Gta3Vm::Execution
     if self.threads[instruction_thread].pc == instruction_pos
       self.threads[instruction_thread].pc = instruction_pos + current_instruction.size
     end
+
+    
+    
     self.tick_count += 1
     result
   end
@@ -71,17 +74,17 @@ class Gta3Vm::Execution
   def dispatch_instruction(instruction)
     definition = vm.opcodes.definition_for(instruction.opcode)
     method_name = definition.nice
-    log "#{pc}\t:#{definition.nice}(#{instruction.args.inspect})"
+    log "dispatch_instruction - thread #{self.thread_id} @ #{pc} - #{definition.nice} - #{instruction.to_ruby(self.vm).inspect}"
     send("opcode_#{method_name}",ArgWrapper.new(definition,instruction.args))
   end
 
   def allocate(address,data_type,value = nil)
-    log "address: #{address.inspect}, data_type: #{data_type.inspect}, value: #{value.inspect}"
+    log "allocate(address: #{address.inspect}, data_type: #{data_type.inspect}, value: #{value.inspect})"
     raise ArgumentError, "address is nil" unless address
     raise ArgumentError, "data_type is nil" unless data_type
     size = 4
 
-    store_as = { 0x01=>0x01, 0x04=>0x01, 0x05=>0x01 }[data_type]
+    store_as = { 0x01=>0x01, 0x04=>0x01, 0x05=>0x01,  0x06=>0x06 }[data_type]
     raise ArgumentError, "no store_as entry for data_type #{data_type.inspect}" unless store_as
 
     to_write = vm.native_to_arg_value(store_as,value)
@@ -99,7 +102,6 @@ class Gta3Vm::Execution
   end
 
   def write(address,size,to_write)
-    puts "write"
     vm.memory.write(address,size,to_write)
   end
 
