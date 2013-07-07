@@ -12,6 +12,7 @@ class Gta3Vm::Execution
   attr_accessor :tick_count
   attr_accessor :thread_id
   attr_accessor :pc
+  attr_accessor :realtime
 
   attr_accessor :switch_on_new_thread
 
@@ -31,10 +32,12 @@ class Gta3Vm::Execution
     self.tick_count = 0
 
     self.threads = []
-    create_thread(0)
+    thread_create(0)
     self.thread_id = 0
 
-    self.switch_on_new_thread = false
+    self.realtime = 0
+
+    self.switch_on_new_thread = true
   end
 
   def irb
@@ -52,15 +55,40 @@ class Gta3Vm::Execution
       self.threads[instruction_thread].pc = instruction_pos + current_instruction.size
     end
 
-    
-    
+    self.realtime += 1
     self.tick_count += 1
     result
   end
 
-  def create_thread(pc,is_mission = false)
-    self.threads << VmThread.new(vm,self,pc)
-    self.thread_id = self.threads.size - 1 if self.switch_on_new_thread
+  def thread_create(pc,is_mission = false)
+    self.threads << VmThread.new(vm,self,pc,is_mission)
+    # self.thread_id = self.threads.size - 1 if self.switch_on_new_thread
+    self.thread_pass if self.switch_on_new_thread
+  end
+
+  def thread_pass
+    # thread 1 - RT: 150 - sleep 250, idleuntil 400
+    # thread 2 - RT: 150 - sleep 350, idleuntil 500
+    # thread 3 - RT: 150 -            idleuntil -999
+    # at 450
+    # thread 1 - 450 - 400  =  50
+    # thread 2 - 450 - 500  = -50
+    # thread 3 - 450 - -999 = 1449
+
+    e_threads = self.threads.each_with_index.
+      map{|thread,id| [id, thread.idle_until ? self.realtime - thread.idle_until : -999_999_999] }.
+      sort_by(&:last).
+      reverse
+
+    log("e_threads: #{e_threads.inspect}")
+    raise "No valid threads to pass to" if e_threads.empty?
+
+    # if passed thread didn't say how long, leave it at current priority
+    self.threads[self.thread_id].idle_until ||= self.realtime if self.threads[self.thread_id]
+
+    self.thread_id = e_threads[0][0]
+
+    self.threads[self.thread_id].idle_until = nil
   end
 
   def pc
@@ -123,8 +151,14 @@ class Gta3Vm::Execution
         type = $3
         symbol = $1.to_sym
       end
-      # puts "ArgWrapper: #{symbol} #{type} #{index} #{args.inspect}"
-      if index = definition.args_names.index(symbol)
+      puts "ArgWrapper: #{args.inspect}"
+      if symbol == :var_args
+        # exclude last arg, it's just the end-of-list marker
+        self.args[0...-1].map{|arg|
+          arg = Gta3Vm::Instruction::Arg.new(arg)
+          Gta3Vm::Vm::DataTypeMethods.arg_to_native(arg)
+        }
+      elsif index = definition.args_names.index(symbol)
         if type == "type"
           args[index].type
         else
@@ -143,10 +177,26 @@ class Gta3Vm::Execution
     attr_accessor :pc
     attr_accessor :name
 
-    def initialize(vm,execution,pc = 0)
+    # used for relative jumps
+    attr_accessor :base_offset
+
+    attr_accessor :idle_until
+
+    attr_accessor :is_mission
+
+    def initialize(vm,execution,pc = 0,is_mission = false)
       self.vm = vm
       self.execution = execution
       self.pc = pc
+      self.is_mission = is_mission
+      if is_mission
+        self.base_offset = pc
+      end
+      self.idle_until = 0
+    end
+
+    def sleep(time_to_sleep)
+      self.idle_until = self.execution.realtime + time_to_sleep
     end
   end
 

@@ -31,9 +31,6 @@
       %label
         %input.memory_break_on_instructions{type: "checkbox", name: "", value: "1"}
         Raw?
-      %label
-        %input.memory_follow_pc{type: "checkbox"}
-        Follow PC?F
       %label{style: "display: none"}
         Size
         %input.memory_window.input-mini{type: "text", placeholder: "Window"}
@@ -46,7 +43,4 @@
     Inspect
     %input.memory_inspect_at.span3{type: "text", placeholder: "Inspect at"}
     %button.memory_do_inspect.btn.btn-primary Inspect
-    %div.btn-group
-      %button.memory_inspect_instruction_prev.btn Prev Inst.F
-      %button.memory_inspect_instruction_next.btn Next Inst.F
   .inspect

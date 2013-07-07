@@ -3,7 +3,13 @@
     %th ID
     %th Name
     %th PC
+    %th Mission
+    %th BaseOff
+    %th IdleUntil
   %tr
     %td.id= locals[:thread_id]
     %td.name= locals[:thread].name
     %td.pc= locals[:thread].pc
+    %td.pc= locals[:thread].is_mission.inspect
+    %td.pc= locals[:thread].base_offset.inspect
+    %td.pc= locals[:thread].idle_until.inspect

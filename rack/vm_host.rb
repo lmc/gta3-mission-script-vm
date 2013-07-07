@@ -37,6 +37,11 @@ class VmHost < Sinatra::Base
     end
   end
 
+  get "/turbotick/:how_many" do
+    params[:how_many].to_i.times { $exe.tick }
+    redirect "/test"
+  end
+
   get "/reset" do
     $exe.reset
     redirect "/test"

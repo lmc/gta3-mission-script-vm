@@ -65,7 +65,7 @@ class VmClient
       @auto_tick_ok = false
       @btn_tick.click()
       # $('#error').get(0).scrollIntoView()
-    ), 100 )
+    ), 20 )
 
     true
 
@@ -115,8 +115,12 @@ class VmClient
       # console.log("id: #{id}, thread_id: #{data.thread_id}")
       if id == data.thread_id
         # console.log(data.current_instruction_inspect)
-        if !force_refresh
+        # if !force_refresh
+          # @btn_memory_view_update_click(null,thread_el.find('.btn-memory-update'))
+        if thread_el.find(".memory .contents_addresses .pos_#{data.thread_pcs[id]}").length == 0
           @btn_memory_view_update_click(null,thread_el.find('.btn-memory-update'))
+        else
+          @update_memory_inners(thread_el.find('.memory'))
         thread_el.find('.inspect').html(data.current_instruction_inspect)
 
 
@@ -201,28 +205,35 @@ class VmClient
 
       @build_memory_contents_addresses(memory_el)
 
-      pc = parseInt( memory_el.parent().find('td.pc').text() )
-      contents_el.find(".current_instruction").removeClass("current_instruction")
-      addresses_el.find(".current_instruction").removeClass("current_instruction")
-      # contents_el.find(".pos_#{pc}").addClass("current_instruction")
-      c_inst_el = contents_el.find(".pos_#{pc}")
-      if c_inst_el.length > 0
-        c_inst_el.addClass("current_instruction")
-        addresses_el.find(".pos_#{pc}").addClass("current_instruction")
-        addresses_el.find(".pos_#{pc}").get(0).scrollIntoView()
-
-        if c_inst_el.prev().hasClass("instruction_name")
-          c_inst_el.prev().addClass("current_instruction")
-
-        next_el = c_inst_el.next()
-        until !next_el.is('span') or next_el.hasClass('instruction_begin') or next_el.hasClass('instruction_name')
-          next_el.addClass('current_instruction')
-          next_el = next_el.next()
-
-
+      @update_memory_inners(memory_el)
     )
 
     false
+
+
+  update_memory_inners: (memory_el) =>
+    contents_el = memory_el.find('.contents')
+    addresses_el = memory_el.find('.contents_addresses')
+
+    pc = parseInt( memory_el.parent().find('td.pc').text() )
+    contents_el.find(".current_instruction").removeClass("current_instruction")
+    addresses_el.find(".current_instruction").removeClass("current_instruction")
+    # contents_el.find(".pos_#{pc}").addClass("current_instruction")
+    c_inst_el = contents_el.find(".pos_#{pc}")
+    if c_inst_el.length > 0
+      c_inst_el.addClass("current_instruction")
+      addresses_el.find(".pos_#{pc}").addClass("current_instruction")
+      addresses_el.find(".pos_#{pc}").get(0).scrollIntoView()
+
+      if c_inst_el.prev().hasClass("instruction_name")
+        c_inst_el.prev().addClass("current_instruction")
+
+      next_el = c_inst_el.next()
+      until !next_el.is('span') or next_el.hasClass('instruction_begin') or next_el.hasClass('instruction_name')
+        next_el.addClass('current_instruction')
+        next_el = next_el.next()
+
+
 
   build_memory_contents_addresses: (memory_el) =>
     memory_addresses_el = memory_el.find('.contents_addresses')

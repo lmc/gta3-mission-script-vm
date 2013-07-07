@@ -98,10 +98,6 @@ class Gta3Vm::Opcodes
     self.opcode_module.class_eval do
       define_method("opcode_#{opcode_name_string}",&block)
     end
-
-    if opcode_name_string =~ /004f/i
-      log "opcode: registered #{opcode_name_string}"
-    end
   end
 
 end

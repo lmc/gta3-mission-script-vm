@@ -155,13 +155,38 @@ body {
 
 }
 
- #variables .variables {
+#variables .variables {
   height: 500px;
   overflow-y: scroll;
- }
+
+  table {
+//    width: 100px;
+  }
+
+  .address_label {
+    width: 175px;
+  }
+
+  span.variable_label, span.label {
+    float: left;
+  }
+
+  .variable_label {
+    margin-left: 5px;
+    display: inline-block;
+    width: 110px;
+    overflow: hidden;
+  }
+}
+
+#threads .threads {
+
+  overflow: hidden;
+}
 
 .thread {
   max-width: 450px;
+  height: 710px;
   float: left;
   margin-right: 10px;
 }
