@@ -1,9 +1,9 @@
-opcode("0002", "jump", jump_location:int) do |args|
-  if args.jump_location > 0
-    self.pc = args.jump_location
+opcode("0002", "jump", goto:int) do |args|
+  if args.goto >= 0
+    jump( args.goto )
   else
-    raise "negative jump #{args.jump_location} without base_offset" if !self.threads[self.thread_id].base_offset
-    self.pc = self.threads[self.thread_id].base_offset + args.jump_location.abs
+    assert( current_thread.base_offset, "negative jump #{args.goto} without base_offset" )
+    jump( current_thread.base_offset + args.goto.abs )
   end
 end
 

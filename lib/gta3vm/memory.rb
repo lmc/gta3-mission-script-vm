@@ -4,7 +4,11 @@ class Gta3Vm::Memory < String
   include Gta3Vm::Logger
 
   attr_accessor :vm
+
   attr_accessor :structure
+  attr_accessor :structure_models
+  attr_accessor :structure_missions
+
   attr_accessor :opcode_map
   attr_accessor :variable_labels
 
@@ -23,6 +27,9 @@ class Gta3Vm::Memory < String
   def detect_structure
     log "detect_structure"
     self.structure = {}
+    self.structure_models = []
+    self.structure_missions = []
+
     offset = 0
     markers = vm.class.scm_markers
 
@@ -30,20 +37,18 @@ class Gta3Vm::Memory < String
       log "detect_structure: searching for #{section_name}"
 
       jump_instruction = vm.instruction_at(offset)
-      log jump_instruction.inspect
       marker_at = offset + jump_instruction.size
       marker_value = vm.memory.read(marker_at,1)
       if marker_value != [marker]
-        raise InvalidScmStructure, "Didn't find '#{section_name}' structure marker '#{marker}' at #{marker_at} (got #{marker_value})"
+        # raise "Didn't find '#{section_name}' structure marker '#{marker}' at #{marker_at} (got #{marker_value})"
       end
       section_start = marker_at + 1
 
       offset = vm.arg_to_native(jump_instruction.args[0])
       jump_instruction = vm.instruction_at(offset)
       if jump_instruction.opcode != [0x02,0x00] && index != markers.size - 1
-        raise InvalidScmStructure, "Didn't find jump after '#{struct_name}' structure at #{offset}"
+        # raise "Didn't find jump after '#{struct_name}' structure at #{offset}"
       end
-      log jump_instruction.inspect
       section_end = offset
 
       self.structure[section_name] = Range.new(section_start,section_end)
@@ -54,6 +59,30 @@ class Gta3Vm::Memory < String
     self.structure[:code_main] = Range.new( self.structure[:missions].end, self.size )
 
     log "structure: #{self.structure.inspect}"
+
+    if self.structure[:models]
+      log "models header: #{vm.hex( vm.memory.read(self.structure[:models].begin,128))}"
+      models_count = vm.read_as_arg(self.structure[:models].begin,:int32)
+      log "models_count: #{models_count}"
+      models_count.times do |idx|
+        str_offset = self.structure[:models].begin + 4 + (idx * 24)
+        model_name = vm.memory.read(str_offset,24).map(&:chr).join.strip
+        self.structure_models << model_name
+      end
+    end
+    log "structure_models: #{self.structure_models.inspect}"
+
+    if self.structure[:missions]
+      log "missions header: #{vm.hex( vm.memory.read(self.structure[:missions].begin,128))}"
+      missions_count = vm.read_as_arg(self.structure[:missions].begin + 4 + 4,:int32)
+      missions_count.times do |idx|
+        mission_offset_off = self.structure[:missions].begin + 4 + 4 + 4 + (idx * 4)
+        mission_offset = vm.read_as_arg(mission_offset_off,:int32)
+        self.structure_missions << mission_offset
+      end
+    end
+    log "structure_missions: #{self.structure_missions.inspect}"
+
     build_opcode_map
     build_variable_labels
   end
@@ -91,6 +120,10 @@ class Gta3Vm::Memory < String
         end
       end
     end
+  end
+
+  def global_memory_size
+    self.structure[:memory].end - self.structure[:memory].begin
   end
 
   def variable_label_for(pg_value)

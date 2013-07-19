@@ -6,11 +6,14 @@ class Gta3Vm::Opcodes
   attr_accessor :opcode_data
   attr_accessor :opcode_module
 
+  attr_accessor :symbol_names
+
   def initialize(vm)
     self.vm = vm
     self.opcode_data = {}
     self.opcode_module = Module.new
-    parse_from_scm_ini("data/vc/VICESCM.ini")
+    load_symbol_names
+    parse_from_scm_ini(self.vm.class.opcodes_definition_path)
     load_opcode_definitions
   end
 
@@ -45,15 +48,34 @@ class Gta3Vm::Opcodes
     good_opcode
   end
 
+  def load_symbol_names
+    self.symbol_names = {}
+    File.open("data/vc/opcodes_defines.h","r").read.each_line do |line|
+      matches = line.match(%r[\/\* ([0-9A-F]+) .*? "(\w+)"])
+        puts "matches: #{matches.inspect}"
+      if matches
+        opcode, name = $1, $2
+        symbol_names[opcode] = name
+      end
+    end
+    puts "symbol_names: #{symbol_names.inspect}"
+  end
+
   def parse_from_scm_ini(path_to_ini)
     File.open(path_to_ini,"r").read.each_line do |line|
       next unless line =~ /\A([0-9a-f]{4})\=(-?\d+),(.*)?/i
       opcode, arg_count, o_notes = $1.upcase, $2.to_i, $3
       # puts o_notes
+      opcode.upcase!
 
       # try to hack something nice out of the notes
       notes = o_notes.gsub(/(%.*?%)/im,'').strip.gsub(/;/,'').gsub(/\s+/,'_')
-      opcode_name = "#{opcode}_#{notes}"
+
+      opcode_name = if name = symbol_names[opcode]
+        name
+      else
+        "#{opcode}_#{notes}"
+      end
       # puts opcode_name
 
       # arg_names = {}
@@ -91,6 +113,7 @@ class Gta3Vm::Opcodes
     self.opcode_data[opcode_bytes] = Gta3Vm::OpcodeDefinition.new({
       :sym_name   => sym_name,
       :nice       => opcode_name_string,
+      :symbol_name=> self.symbol_names[opcode_name_string],
       :args_count => arguments_definition.size,
       :args_names => arguments_definition.keys,
       :args_types => arguments_definition.values.map { |type| type }

@@ -13,9 +13,11 @@ end
 require 'ostruct'
 require 'active_support/concern'
 require 'active_support/core_ext/class/attribute'
+require 'active_support/core_ext/array'
 
 require "gta3vm/core_extensions.rb"
 require "gta3vm/vm_vice_city.rb"
+require "gta3vm/vm_gta3.rb"
 require "gta3vm/logger.rb"
 require "gta3vm/memory.rb"
 require "gta3vm/opcode_definition.rb"
@@ -25,6 +27,8 @@ require "gta3vm/execution.rb"
 require "gta3vm/vm/helpers.rb"
 require "gta3vm/vm/data_type_methods.rb"
 require "gta3vm/instrumentation.rb"
+
+require "gta3vm/disassembler.rb"
 
 
 # load "lib/gta3vm/core_extensions.rb"
@@ -69,6 +73,10 @@ class Gta3Vm::Vm
     end
   end
 
+  def disassemble
+    Gta3Vm::Disassembler.new(self).disassemble
+  end
+
   def instruction_at(offset)
     opcode = memory.read(offset,2)
 
@@ -109,9 +117,17 @@ class Gta3Vm::Vm
   end
 
   def instruction_arg_at_type(type,offset)
-    type = Gta3Vm::Vm::DataTypeMethods::TYPE_SHORTHANDS[type] if type.is_a?(Symbol)
+    type = normalize_type(type)
     bytes = bytes_to_read_for_arg_data_type(type,offset)
+    # puts "reading #{bytes} byes for type #{type}"
     Gta3Vm::Instruction::Arg.new([type,memory.read(offset + 1,bytes)])
+  end
+
+  def read_as_arg(offset,arg_type,bytes_to_read = nil)
+    bytes_to_read ||= self.bytes_to_read_for_arg_data_type(arg_type,offset)
+    arg_type = normalize_type(arg_type)
+    arg = Gta3Vm::Instruction::Arg.new([arg_type,self.memory.read(offset,bytes_to_read)])
+    self.arg_to_native(arg)
   end
 
 
@@ -135,11 +151,31 @@ class Gta3Vm::Vm
   # ####################
 
   def self.new_for_vc
-    Gta3Vm::VmViceCity.new(bytecode: File.read("./main-vc.scm"))
+    Gta3Vm::VmViceCity.new(bytecode: File.read("./main-vc-orig.scm"))
+  end
+
+  def self.new_for_gta3
+    Gta3Vm::VmGta3.new(bytecode: File.read("./main-gta3-ios.scm"))
+  end
+
+  def self.opcodes_definition_path
+    raise "abstract"
   end
 
   def self.scm_markers
     raise "abstract"
+  end
+
+  def self.max_data_type
+    raise "abstract"
+  end
+
+  def self.data_types
+    raise "abstract"
+  end
+
+  def self.data_types_inv
+    data_types.invert
   end
 
 

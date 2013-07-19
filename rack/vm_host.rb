@@ -26,6 +26,15 @@ class VmHost < Sinatra::Base
   get "/javascripts/:file" do
     coffee params[:file].to_sym
   end
+  get "/javascripts_js/:file" do
+    content_type "text/javascript"
+    File.read("./rack/views/#{params[:file]}.js")
+  end
+
+  get "/load_state" do
+    $exe.load_state_from_save(File.open('GTAVCsf3.b'))
+    redirect "/test"
+  end
 
   get "/tick" do
     begin
@@ -154,7 +163,7 @@ class VmHost < Sinatra::Base
       thread_pcs: $exe.threads.map(&:pc),
       thread_html: $exe.threads.each_with_index.map{|thread,thread_id| haml :thread, layout: false, locals: {thread: thread, thread_id: thread_id}},
       current_instruction_inspect: haml(:inspect, layout: false, locals: {pos: $exe.pc, vm: $vm}),
-      variables_html: render_variables_html
+      # variables_html: render_variables_html
     }
   end
 

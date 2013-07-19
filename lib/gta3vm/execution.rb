@@ -60,6 +60,10 @@ class Gta3Vm::Execution
     result
   end
 
+  def current_thread
+    self.threads[self.thread_id]
+  end
+
   def thread_create(pc,is_mission = false)
     self.threads << VmThread.new(vm,self,pc,is_mission)
     # self.thread_id = self.threads.size - 1 if self.switch_on_new_thread
@@ -67,14 +71,7 @@ class Gta3Vm::Execution
   end
 
   def thread_pass
-    # thread 1 - RT: 150 - sleep 250, idleuntil 400
-    # thread 2 - RT: 150 - sleep 350, idleuntil 500
-    # thread 3 - RT: 150 -            idleuntil -999
-    # at 450
-    # thread 1 - 450 - 400  =  50
-    # thread 2 - 450 - 500  = -50
-    # thread 3 - 450 - -999 = 1449
-
+    # sort threads by realtime past desired wakeup time
     e_threads = self.threads.each_with_index.
       map{|thread,id| [id, thread.idle_until ? self.realtime - thread.idle_until : -999_999_999] }.
       sort_by(&:last).
@@ -84,26 +81,92 @@ class Gta3Vm::Execution
     raise "No valid threads to pass to" if e_threads.empty?
 
     # if passed thread didn't say how long, leave it at current priority
-    self.threads[self.thread_id].idle_until ||= self.realtime if self.threads[self.thread_id]
+    self.current_thread.idle_until ||= self.realtime if self.current_thread
 
-    self.thread_id = e_threads[0][0]
+    self.thread_id = e_threads[0][0] # most overdue thread
 
-    self.threads[self.thread_id].idle_until = nil
+    self.current_thread.idle_until = nil
+  end
+
+  def thread_idle(until_realtime = nil)
+    self.current_thread.idle_until = until_realtime
+    self.thread_pass
   end
 
   def pc
-    self.threads[self.thread_id].pc
+    self.current_thread.pc
   end
 
   def pc=(value)
-    self.threads[self.thread_id].pc = value
+    self.current_thread.pc = value
+  end
+
+  def jump(pc)
+    self.pc = pc
+  end
+
+  def load_state_from_save(save)
+    # buffer = save.read
+    scr_marker_at = 236
+    # scm_block_size, memory_size = buffer[scr_marker_at+4...scr_marker_at+4+8].unpack("ll")
+    save.seek(scr_marker_at)
+    scr_marker = save.read(4)
+    scm_block_size, memory_size = save.read(8).unpack("L<*")
+    puts "scr_marker_at: #{scr_marker.inspect}"
+    puts "scm_block_size: #{scm_block_size}, memory_size: #{memory_size}"
+    memory = save.read(memory_size)
+
+    # errything_else = save.read(scm_block_size - memory_size)
+    # puts "errything_else:"
+    # puts errything_else.bytes.to_a.inspect
+    # puts errything_else.unpack("L*").inspect
+
+    # return
+
+
+    vm_block_size = save.read(4).unpack("L<")[0]
+    puts "vm_block_size: #{vm_block_size}"
+    vm_block = save.read(vm_block_size)
+    puts "vm_block:"
+    puts vm_block.unpack("L<*").inspect
+    # puts vm_block.unpack("SL<*").inspect
+    puts vm_block.bytes.to_a.inspect
+
+    block_c_size = save.read(4).unpack("L<")[0]
+    puts "block_c_size: #{block_c_size}"
+    block_c = save.read(block_c_size)
+    puts "block_c:"
+    puts block_c.unpack("L<*").inspect
+    # puts block_c.unpack("SL<*").inspect
+    puts block_c.bytes.to_a.inspect
+
+    block_d_size = save.read(4).unpack("L<")[0]
+    puts "block_d_size: #{block_d_size}"
+    block_d = save.read(block_d_size)
+    puts "block_d:"
+    puts block_d.unpack("L<*").inspect
+
+    maybe_thread_pcs = []
+
+    post_block = save.read(1024)
+    puts "postblock: #{post_block.inspect}"
+
+    self.reset
+    self.threads = []
+    maybe_thread_pcs.each do |thread_pc|
+      thread_create(thread_pc)
+    end
   end
 
   def dispatch_instruction(instruction)
     definition = vm.opcodes.definition_for(instruction.opcode)
     method_name = definition.nice
     log "dispatch_instruction - thread #{self.thread_id} @ #{pc} - #{definition.nice} - #{instruction.to_ruby(self.vm).inspect}"
-    send("opcode_#{method_name}",ArgWrapper.new(definition,instruction.args))
+    send("opcode_#{method_name}",ArgWrapper.new(self.vm,definition,instruction.args))
+  end
+
+  def set_pg(address,data_type,value = nil)
+    allocate(address,data_type)
   end
 
   def allocate(address,data_type,value = nil)
@@ -122,25 +185,60 @@ class Gta3Vm::Execution
     write(address,size,to_write)
   end
 
-  def read_as_arg(offset,arg_type,bytes_to_read = nil)
-    arg_type = Gta3Vm::Vm::DataTypeMethods::TYPE_SHORTHANDS[arg_type] if arg_type.is_a?(Symbol)
-    bytes_to_read ||= Gta3Vm::Vm::DataTypeMethods.bytes_to_read_for_arg_data_type(arg_type,offset)
-    arg = Gta3Vm::Instruction::Arg.new([arg_type,vm.memory.read(offset,bytes_to_read)])
-    Gta3Vm::Vm::DataTypeMethods.arg_to_native(arg)
+  def assert(check,message,klass = ExecutionAssertionError)
+    raise klass, message unless check
+  end
+
+  def read_as_arg(*args)
+    vm.read_as_arg(*args)
   end
 
   def write(address,size,to_write)
     vm.memory.write(address,size,to_write)
   end
 
+  def variables
+    @variables ||= VariablesProxy.new(self)
+  end
+
+  def locals
+    current_thread.locals
+  end
+
+  def read_variable(pg_id)
+    vm.memory.read( vm.memory.structure[:memory].begin + pg_id, 4 )
+  end
+
+  # def write_variable(pg_id,bytes)
+  #   write( vm.memory.structure[:memory].begin + pg_id, 4, bytes )
+  # end
+
 
   # #####################
 
+  class VariablesProxy
+    attr_accessor :exe
+
+    def initialize(exe)
+      self.exe = exe
+    end
+
+    def [](pg_id,type)
+      exe.arg_to_native(type,exe.read_variable(pg_id))
+    end
+
+    def []=(pg_id,(type,value))
+      exe.allocate( exe.vm.memory.structure[:memory].begin + pg_id, type, value)
+    end
+  end
+
   class ArgWrapper
+    attr_accessor :vm
     attr_accessor :definition
     attr_accessor :args
 
-    def initialize(definition,args)
+    def initialize(vm,definition,args)
+      self.vm = vm
       self.definition = definition
       self.args = args
     end
@@ -156,13 +254,13 @@ class Gta3Vm::Execution
         # exclude last arg, it's just the end-of-list marker
         self.args[0...-1].map{|arg|
           arg = Gta3Vm::Instruction::Arg.new(arg)
-          Gta3Vm::Vm::DataTypeMethods.arg_to_native(arg)
+          vm.arg_to_native(arg)
         }
       elsif index = definition.args_names.index(symbol)
         if type == "type"
           args[index].type
         else
-          Gta3Vm::Vm::DataTypeMethods.arg_to_native(args[index])
+          vm.arg_to_native(args[index])
         end
       end
     end
@@ -194,15 +292,13 @@ class Gta3Vm::Execution
       end
       self.idle_until = 0
     end
-
-    def sleep(time_to_sleep)
-      self.idle_until = self.execution.realtime + time_to_sleep
-    end
   end
 
   # Extra features #######
 
   require "gta3vm/execution/dirty.rb"
   include Gta3Vm::Execution::Dirty
+
+  class ExecutionAssertionError < ::StandardError; end
   
 end

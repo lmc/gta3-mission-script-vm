@@ -8,36 +8,72 @@ module Gta3Vm::Vm::DataTypeMethods
   end
 
   def bytes_to_read_for_arg_data_type(arg_type,offset)
-    case arg_type
-    when 0x01 # immediate 32 bit signed int
-      4
-    when 0x02 # 16-bit global pointer to int/float
-      2
-    when 0x03 # 16-bit local pointer to int/float
-      2
-    when 0x04 # immediate 8-bit signed int
-      1
-    when 0x05 # immediate 16-bit signed int 
-      2
-    when 0x06 # immediate 32-bit float
-      4
-    when 0x09 # immediate 8-byte string
-      8
-    when 0x0e # variable-length string
-      memory.read(offset + 1,1)[0] + 1 #+1 to read the var string length prefix too
+    arg_type = normalize_type(arg_type)
+    shorthand = type_int_to_shorthand(arg_type)
+
+    if SHORTHANDS_SIZES[shorthand]
+      SHORTHANDS_SIZES[shorthand]
     else
-      if arg_type > DATA_TYPE_MAX # immediate type-less 8-byte string
-        7
+      case arg_type
+      when 0x09 # immediate 8-byte string
+        8
+      when 0x0e # variable-length string
+        memory.read(offset + 1,1)[0] + 1 #+1 to read the var string length prefix too
       else
-        raise Gta3Vm::Vm::InvalidDataType, "unknown data type #{arg_type} (#{hex(arg_type)})"
+        if arg_type > self.class.max_data_type # immediate type-less 8-byte string
+          7
+        else
+          raise Gta3Vm::Vm::InvalidDataType, "unknown data type #{arg_type} (#{hex(arg_type)})"
+        end
       end
     end
   end
+
+  def type_shorthand_to_int(shorthand)
+    
+  end
+
+  def type_shorthand_to_pack_char(shorthand)
+    SHORTHANDS_PACK_CHARS[shorthand]
+  end
+
+  def type_int_to_shorthand(int)
+    self.class.data_types[int]
+  end
+
+  def normalize_type(arg_type)
+    arg_type = Gta3Vm::Vm::DataTypeMethods::TYPE_SHORTHANDS[arg_type] if arg_type.is_a?(Symbol)
+    raise "Unknown type: #{arg_type.inspect}" unless arg_type.is_a?(Numeric)
+    arg_type
+  end
+
+  SHORTHANDS_SIZES = {
+    :int32   => 4,
+    :int16   => 2,
+    :int8    => 1,
+    :pg      => 2,
+    :pl      => 2,
+    :float32 => 4,
+    :float16 => 2
+  }
+  SHORTHANDS_PACK_CHARS = {
+    :int32   => "l<",
+    :int16   => "s<",
+    :int8    => "c",
+    :pg      => "S<",
+    :pl      => "S<",
+    :float32 => "e",
+    :float16 => nil # lol float16 is fucked
+  }
+
+
+
 
   DATA_TYPE_MAX = 31
   TYPE_SHORTHANDS = {
     :int32   => 0x01,
     :pg      => 0x02, # all "pointers" are to ints or floats
+    :pl      => 0x03,
     :bool    => 0x04,
     :int8    => 0x04,
     :int16   => 0x05,
@@ -60,11 +96,17 @@ module Gta3Vm::Vm::DataTypeMethods
   def arg_to_native(arg)
     return nil if arg.type == 0x00
 
-    # arg_type = TYPE_SHORTHANDS[arg_type] if arg_type.is_a?(Symbol)
+    shorthand = type_int_to_shorthand( normalize_type(arg.type) )
 
-    value = if pack_char = PACK_CHARS_FOR_DATA_TYPE[arg.type]
-      value = arg.value.to_byte_string.unpack( PACK_CHARS_FOR_DATA_TYPE[arg.type] )[0]
+    # puts "arg_to_native(#{arg.inspect})"
+    # puts "type - #{arg.type} - shorthand - #{shorthand.inspect} - pack_char - #{type_shorthand_to_pack_char(shorthand).inspect}"
+
+    value = if pack_char = type_shorthand_to_pack_char(shorthand)
+      value = arg.value.to_byte_string.unpack( pack_char )[0]
       value
+    elsif shorthand == :float16
+      # HACK: these "floats" are actually fixed-point int16s, we need to divide by 8 to get a real value
+      arg.value.to_byte_string.unpack( type_shorthand_to_pack_char(:int16) )[0] / 8.0
     else
 
       case arg.type
@@ -73,7 +115,7 @@ module Gta3Vm::Vm::DataTypeMethods
       when  0x0e # variable-length string
         arg.value.to_byte_string[1..-1]
       else
-        if arg.type > DATA_TYPE_MAX # immediate type-less 8-byte string
+        if arg.type > self.class.max_data_type # immediate type-less 8-byte string
           [arg.type,arg.value].flatten.to_byte_string.strip_to_null #FIXME: can have random crap after first null byte, cleanup
         else
           raise Gta3Vm::Vm::InvalidDataType, "unknown data type #{arg_type} (#{hex(arg_type)})"

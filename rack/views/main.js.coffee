@@ -77,6 +77,7 @@ class VmClient
       @memory_size = end
 
   update_variables_html: (data) =>
+    return
     if data.variables_html
       $('#variables .variables').html(data.variables_html)
 
@@ -88,6 +89,7 @@ class VmClient
       if $("#threads #thread_#{id}").length == 0
         force_refresh = true
 
+    $('.thread').addClass('muted')
     $.each data.thread_html, (id,html) =>
       thread_el = $("#threads #thread_#{id}")
 
@@ -117,6 +119,8 @@ class VmClient
         # console.log(data.current_instruction_inspect)
         # if !force_refresh
           # @btn_memory_view_update_click(null,thread_el.find('.btn-memory-update'))
+        thread_el.removeClass('muted')
+
         if thread_el.find(".memory .contents_addresses .pos_#{data.thread_pcs[id]}").length == 0
           @btn_memory_view_update_click(null,thread_el.find('.btn-memory-update'))
         else
@@ -216,6 +220,7 @@ class VmClient
     addresses_el = memory_el.find('.contents_addresses')
 
     pc = parseInt( memory_el.parent().find('td.pc').text() )
+    thread_id = parseInt( memory_el.parent().find('td.id').text() )
     contents_el.find(".current_instruction").removeClass("current_instruction")
     addresses_el.find(".current_instruction").removeClass("current_instruction")
     # contents_el.find(".pos_#{pc}").addClass("current_instruction")
@@ -223,7 +228,12 @@ class VmClient
     if c_inst_el.length > 0
       c_inst_el.addClass("current_instruction")
       addresses_el.find(".pos_#{pc}").addClass("current_instruction")
-      addresses_el.find(".pos_#{pc}").get(0).scrollIntoView()
+      # if thread_id < 7
+      address_el = addresses_el.find(".pos_#{pc}")
+      ahead = 1
+      while ahead-- >= 0 and address_el.next().is('.address')
+        address_el = address_el.next()
+      address_el.scrollIntoView({duration: 0,offset: 20})
 
       if c_inst_el.prev().hasClass("instruction_name")
         c_inst_el.prev().addClass("current_instruction")
@@ -290,7 +300,7 @@ class VmClient
       contents_el.find(".inspect_pos").removeClass("inspect_pos")
       contents_el.find(".inspect_instruction").removeClass("inspect_instruction")
 
-      memory_el.get(0).scrollIntoView()
+      memory_el.scrollIntoView({duration: 0})
       pos_el.addClass("inspect_pos")
       if pos_el.hasClass("instruction")
         prev = pos_el

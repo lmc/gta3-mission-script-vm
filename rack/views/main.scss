@@ -11,6 +11,7 @@ body {
 
   .memory-controls-form {
     height: 30px;
+    display: none;
   }
 
   .inputs-left {
@@ -28,7 +29,8 @@ body {
     clear: both;
     position: relative;
     width: 436px; // ((20px + 1px border) * 16 cells wide) + 100px addresses sidebar
-    height: 400px;
+//    height: 400px;
+    height: 100px;
 
     overflow-x: scroll;
     overflow-y: scroll;
@@ -149,8 +151,9 @@ body {
 
 
 
-  #inspect_toolbar {
+  .inspect_toolbar {
     margin-top: 1em;
+    display: none;
   }
 
 }
@@ -186,7 +189,7 @@ body {
 
 .thread {
   max-width: 450px;
-  height: 710px;
+  height: 300px;
   float: left;
   margin-right: 10px;
 }
