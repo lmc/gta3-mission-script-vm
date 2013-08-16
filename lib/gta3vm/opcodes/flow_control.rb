@@ -1,4 +1,4 @@
-opcode("0002", "jump", goto:int) do |args|
+opcode("0002", :GOTO, goto:int) do |args|
   if args.goto >= 0
     jump( args.goto )
   else

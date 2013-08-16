@@ -132,19 +132,45 @@ class Gta3Vm::Execution
     # puts vm_block.unpack("SL<*").inspect
     puts vm_block.bytes.to_a.inspect
 
-    block_c_size = save.read(4).unpack("L<")[0]
-    puts "block_c_size: #{block_c_size}"
-    block_c = save.read(block_c_size)
-    puts "block_c:"
-    puts block_c.unpack("L<*").inspect
-    # puts block_c.unpack("SL<*").inspect
-    puts block_c.bytes.to_a.inspect
+    threads_count = save.read(4).unpack("L<")[0]
+    save_threads = []
+    threads_count.times do |thread_id|
+      # thread = save.read(136)
+      thread = {}
+      thread[:unused_01], thread[:unused_02] = save.read(8).unpack("ll")
+      thread[:name] = save.read(8).strip
+      thread[:pc] = save.read(4).unpack("l")[0]
+      thread[:stack] = save.read(24).unpack("l*")
+      thread[:stack_pointer] = save.read(4).unpack("l")[0]
+      thread[:locals] = save.read(4 * 16)#.in_groups_of(4)
+      thread[:timers] = save.read(4 * 2)#.in_groups_of(4)
+      thread[:unused_03] = save.read(1)
+      thread[:if_result] = save.read(1)
+      thread[:cleanup_flag] = save.read(1)
+      thread[:awake] = save.read(1)
+      thread[:idle_until] = save.read(4).unpack("l")[0]
+      thread[:if_param] = save.read(2).unpack("s")[0]
+      thread[:not_param] = save.read(1)
+      thread[:busted_wasted_flag] = save.read(1)
+      thread[:busted_wasted_triggered] = save.read(1)
+      thread[:is_mission] = save.read(1)
+      thread[:unused_04] = save.read(2)
+      puts ""
+      puts thread.inspect
+      save_threads << thread
+    end
+    # puts "block_c_size: #{block_c_size}"
+    # block_c = save.read(block_c_size)
+    # puts "block_c:"
+    # puts block_c.unpack("L<*").inspect
+    # # puts block_c.unpack("SL<*").inspect
+    # puts block_c.bytes.to_a.inspect
 
-    block_d_size = save.read(4).unpack("L<")[0]
-    puts "block_d_size: #{block_d_size}"
-    block_d = save.read(block_d_size)
-    puts "block_d:"
-    puts block_d.unpack("L<*").inspect
+    # block_d_size = save.read(4).unpack("L<")[0]
+    # puts "block_d_size: #{block_d_size}"
+    # block_d = save.read(block_d_size)
+    # puts "block_d:"
+    # puts block_d.unpack("L<*").inspect
 
     maybe_thread_pcs = []
 
@@ -153,9 +179,11 @@ class Gta3Vm::Execution
 
     self.reset
     self.threads = []
-    maybe_thread_pcs.each do |thread_pc|
-      thread_create(thread_pc)
+    save_threads.each do |thread|
+      thread_create(thread[:pc])
+      # self.threads.last.name = thread[:name]
     end
+    self.thread_id = 0
   end
 
   def dispatch_instruction(instruction)

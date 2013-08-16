@@ -43,6 +43,29 @@ describe Gta3Vm::Vm do
         exe.vm.memory.read(0,4).should == [0x01,0x00,0x00,0x00]
       }
     end
+
+
+
+    decribe "Better execution" do
+      it "should run" do
+        vm = Gta3Vm::Vm.new(bytecode: load_bytecode(<<-BYTECODE))
+          @0004  02 00 00  01 01 00 00 00 # SET_VAR_INT pg:0 int32:1
+          @0008  02 00 00  01 04 00 00 00 # ADD_VAL_TO_INT_VAR pg:0 int32:4
+        BYTECODE
+        # pg:0 should eq 5
+      end
+    end
+  end
+
+  describe "opcodes" do
+    describe "0004 SET_VAR_INT" do
+      it "should work" do
+        #             0004       pg 4            int32 8
+        load_bytecode(0x04,0x00, 0x02,0x04,0x00, 0x01,0x08,0x00,0x00,0x00) do |vm|
+          vm
+        end
+      end
+    end
   end
 
   # set pg 0 to 1
@@ -61,6 +84,17 @@ describe Gta3Vm::Vm do
         end
       RUBY
     end
+  end
+
+
+
+  def load_bytecode(bytecode)
+    yield = Gta3Vm::Vm.new(bytecode: (memory_bytecode() + bytecode)to_byte_string )
+  end
+
+  def memory_bytecode(memory = 128)
+    end_of_block = 8 + memory # jump opcode + marker
+
   end
 
 end

@@ -1,4 +1,4 @@
-opcode("0001", "wait", min_ms:int) do |args|
+opcode("0001", :WAIT, min_ms:int) do |args|
   thread_idle( realtime + args.min_ms )
 end
 

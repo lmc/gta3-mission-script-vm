@@ -20,7 +20,7 @@ class Gta3Vm::Opcodes
   def load_opcode_definitions
     Dir.glob("lib/gta3vm/opcodes/*.rb").each do |path|
       int, float, bool, string = :int, :float, :bool, :string
-      pg = :pg
+      pg, lg = :pg, :lg
       int_or_float, int_or_var, float_or_var = :int_or_float, :int_or_var, :float_or_var
       log "load_opcode_definitions: loading #{path}"
       eval(File.read(path),nil,File.join(Dir.pwd,path))
@@ -111,7 +111,7 @@ class Gta3Vm::Opcodes
   def opcode(opcode_name_string,sym_name,arguments_definition = {},&block)
     opcode_bytes = opcode_name_string.scan(/(..)/).map{|hex| hex[0].to_i(16) }.reverse
     self.opcode_data[opcode_bytes] = Gta3Vm::OpcodeDefinition.new({
-      :sym_name   => sym_name,
+      :sym_name   => sym_name.to_s,
       :nice       => opcode_name_string,
       :symbol_name=> self.symbol_names[opcode_name_string],
       :args_count => arguments_definition.size,

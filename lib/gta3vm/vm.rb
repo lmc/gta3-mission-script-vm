@@ -156,6 +156,7 @@ class Gta3Vm::Vm
 
   def self.new_for_gta3
     Gta3Vm::VmGta3.new(bytecode: File.read("./main-gta3-ios.scm"))
+    # Gta3Vm::VmGta3.new(bytecode: File.read("./main_freeroam.scm"))
   end
 
   def self.opcodes_definition_path

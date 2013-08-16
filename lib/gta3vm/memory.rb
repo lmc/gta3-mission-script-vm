@@ -80,6 +80,10 @@ class Gta3Vm::Memory < String
         mission_offset = vm.read_as_arg(mission_offset_off,:int32)
         self.structure_missions << mission_offset
       end
+      if self.structure_missions.present?
+        self.structure[:code_main] = Range.new(self.structure[:missions].end, self.structure_missions[0])
+        self.structure[:code_missions] = Range.new(self.structure_missions[0], self.size)
+      end
     end
     log "structure_missions: #{self.structure_missions.inspect}"
 
