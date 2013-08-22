@@ -12,5 +12,6 @@ gem "haml"
 gem "sass"
 gem "coffee-script"
 gem "json"
-gem "binary_search", github: "tyler/binary_search"
 
+gem "binary_search", github: "tyler/binary_search"
+gem "float-formats"#, github: "jgoizueta/float-formats"

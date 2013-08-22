@@ -49,27 +49,33 @@ class Gta3Vm::Disassembler
   protected
 
   def fuck_with_ast
-    patterns = [
-      ConditionalIfEndAstNode::PATTERN
+    to_scan = [
+      ConditionalIfEndAstNode
     ]
 
-    scanner = AstScanner.new(self,self.ast,0,ConditionalIfEndAstNode::PATTERN)
-    scanner.on_match = lambda do |*|
-      puts "== on_match =="
-      puts scanner.current_match__match_names_to_offsets.inspect
-      # node = self.ast[scanner.current_match_start]
-      # node.tags(:conditional_if_end__if)
-      # node.meta(
-      #   block_end: scanner.current_match_end
-      # )
-      
-      matches = scanner.current_match__match_names_to_offsets
-      self.ast.branch!(matches[:begin][0],matches[:branch_false][0])
+    to_scan.each do |scan_klass|
+
+      scanner = AstScanner.new(self,self.ast,0,scan_klass::PATTERN)
+      scanner.on_match = lambda do |*|
+        # puts "== on_match =="
+        # puts scanner.current_match__match_names_to_offsets.inspect
+        # node = self.ast[scanner.current_match_start]
+        # node.tags(:conditional_if_end__if)
+        # node.meta(
+        #   block_end: scanner.current_match_end
+        # )
+        scan_klass.on_match(scanner)
+
+        matches = scanner.current_match__match_names_to_offsets
+        self.ast.branch!(matches[:begin][0],matches[:branch_false][0],scan_klass,matches)
+      end
+
+      5000.times {
+        scanner.think
+      }
+
     end
 
-    5000.times {
-      scanner.think
-    }
   end
 
   # def output_disassembly
@@ -95,47 +101,51 @@ class Gta3Vm::Disassembler
       if offset_has_label?(offset)
         out.puts "\n\n:#{emit_label_name(offset,offset)}"
       end
-      out.puts output_ast_node(offset,self.ast[offset])
+      output_ast_node(out,offset,self.ast[offset])
     end
   end
 
   attr_accessor :_indent
 
-  def output_ast_node(offset,ast_node)
-    self._indent ||= 0
-    s = ""
-
-    if ast_node.size > 0
-      self._indent += 1
-
-      s = ""
-      s << "#{'  ' * _indent}==== #{ast_node.class.name} ====\n"
-      ast_node.each_pair do |s_offset,s_node|
-        s << "#{'  ' * _indent}#{output_ast_node(s_offset,s_node)}\n"
-      end
-      s << "#{'  ' * _indent}====\n"
-
-      self._indent -= 1
-
-    else
-
-      if instruction = ast_node.instruction
-        definition = opcode_definition(instruction)
-        native_args = instruction.to_ruby(vm)[1]
-        args = native_args.each_with_index.map{|arg,i| emit_arg( offset, instruction, i, instruction.args[i][0], arg[1] ) }
-
-        s << definition.symbol_name.to_s.downcase
-        if args.present?
-          s << " " << args.join(" ")
-        end
-      end
-
-      s << "! #{ast_node.tags.join(' ')} #{ast_node.meta.inspect}"
-
-    end
-
-    s
+  def output_ast_node(out,offset,ast_node)
+    ast_node.output(out,self)
   end
+
+  # def output_ast_node(out,offset,ast_node)
+  #   self._indent ||= 0
+  #   s = ""
+
+  #   if ast_node.size > 0
+  #     self._indent += 1
+
+  #     s = ""
+  #     s << "#{'  ' * _indent}==== #{ast_node.class.name} ====\n"
+  #     ast_node.each_pair do |s_offset,s_node|
+  #       s << "#{'  ' * _indent}#{output_ast_node(s_offset,s_node)}\n"
+  #     end
+  #     s << "#{'  ' * _indent}====\n"
+
+  #     self._indent -= 1
+
+  #   else
+
+  #     if instruction = ast_node.instruction
+  #       definition = opcode_definition(instruction)
+  #       native_args = instruction.to_ruby(vm)[1]
+  #       args = native_args.each_with_index.map{|arg,i| emit_arg( offset, instruction, i, instruction.args[i][0], arg[1] ) }
+
+  #       s << definition.symbol_name.to_s.downcase
+  #       if args.present?
+  #         s << " " << args.join(" ")
+  #       end
+  #     end
+
+  #     s << "! #{ast_node.tags.join(' ')} #{ast_node.meta.inspect}"
+
+  #   end
+
+  #   s
+  # end
 
   def offset_has_label?(offset)
     @observed_jumps_sorted ||= self.observed_jumps.sort
@@ -352,6 +362,8 @@ class Gta3Vm::Disassembler
     attr_accessor :tags
     attr_accessor :meta
 
+    attr_accessor :offset_map
+
     attr_accessor :parent
     def children; self; end
 
@@ -392,13 +404,15 @@ class Gta3Vm::Disassembler
       instruction.inspect
     end
 
-    def branch!(start_offset,end_offset,klass = self.class)
+    def branch!(start_offset,end_offset,klass = self.class,offset_map = nil)
       puts "branch!(#{start_offset.inspect},#{end_offset.inspect})"
       offsets_range = start_offset...end_offset
       offsets = self.keys.sort & offsets_range.to_a # intersection
       puts "  offsets: #{offsets.inspect}"
 
       new_node = klass.new(offsets[0])
+
+      new_node.offset_map = offset_map if offset_map
 
       offsets.each do |offset|
         new_node[offset] = self.delete(offset)
@@ -408,7 +422,47 @@ class Gta3Vm::Disassembler
 
       puts "new_node @ #{offsets[0]}: #{new_node.inspect}"
     end
+
+
+    def self.on_match(scanner)
+      puts "== on_match =="
+      puts scanner.current_match__match_names_to_offsets.inspect
+
+    end
+
+    def output(out,disassembler)
+      if self.size > 0
+        output_nested(out,disassembler)
+      else
+        output_single(out,disassembler)
+      end
+    end
+
+    def output_nested(out,disassembler)
+      out.puts "==#{self.class.name}=="
+      self.each_pair { |_,leaf| leaf.output(out,disassembler) }
+      out.puts "=="
+    end
+
+    def output_single(out,disassembler)
+      if instruction = self.instruction
+        definition = disassembler.send(:opcode_definition,instruction)
+        native_args = instruction.to_ruby(disassembler.vm)[1]
+        args = native_args.each_with_index.map{|arg,i| disassembler.send(:emit_arg, self.address, instruction, i, instruction.args[i][0], arg[1] ) }
+
+        s = ""
+        s << definition.symbol_name.to_s.downcase
+        if args.present?
+          s << " " << args.join(" ")
+        end
+
+        out.puts s
+      end
+    end
+
+
   end
+
 
 
 
@@ -420,6 +474,25 @@ class Gta3Vm::Disassembler
       [:branch_true,  :any],
       [:branch_false, :offset,:jump]
     ]
+
+    def output_nested(out,disassembler)
+      out.puts "#BEGIN"
+      super
+      out.puts "#END"
+
+      out.puts "IF"
+      self.offset_map[:conditions].each do |off|
+        self[off].output(out,disassembler) rescue out.puts "!!!"
+      end
+      # out.puts self.offset_map[:conditions].inspect
+      # out.puts self.inspect
+      out.puts "THEN"
+      # out.puts "-body-"
+      self.offset_map[:branch_true].each do |off|
+        self[off].output(out,disassembler) rescue out.puts "!!!"
+      end
+      out.puts "ENDIF"
+    end
   end
 
 
