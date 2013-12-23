@@ -1,9 +1,9 @@
-opcode("0002", :GOTO, goto:int) do |args|
-  if args.goto >= 0
-    jump( args.goto )
+opcode("0002", :GOTO, goto:int) do
+  if goto >= 0
+    jump( goto )
   else
-    assert( current_thread.base_offset, "negative jump #{args.goto} without base_offset" )
-    jump( current_thread.base_offset + args.goto.abs )
+    assert( current_thread.base_offset, "negative jump #{goto} without base_offset" )
+    jump( current_thread.base_offset + goto.abs )
   end
 end
 

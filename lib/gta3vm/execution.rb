@@ -190,7 +190,20 @@ class Gta3Vm::Execution
     definition = vm.opcodes.definition_for(instruction.opcode)
     method_name = definition.nice
     log "dispatch_instruction - thread #{self.thread_id} @ #{pc} - #{definition.nice} - #{instruction.to_ruby(self.vm).inspect}"
-    send("opcode_#{method_name}",ArgWrapper.new(self.vm,definition,instruction.args))
+    @dispatched_arg_names = definition.args_names
+    @dispatched_arg_wrapper = ArgWrapper.new(self.vm,definition,instruction.args)
+    send("opcode_#{method_name}")
+  ensure
+    @dispatched_arg_names = nil
+    @dispatched_arg_wrapper = nil
+  end
+
+  def method_missing(method,*args,&block)
+    if @dispatched_arg_names && @dispatched_arg_names.include?(method)
+      @dispatched_arg_wrapper.send(method,*args,&block)
+    else
+      super
+    end
   end
 
   def set_pg(address,data_type,value = nil)
@@ -228,6 +241,9 @@ class Gta3Vm::Execution
 
   def variables
     @variables ||= VariablesProxy.new(self)
+  end
+  def vars
+    variables
   end
 
   def locals
@@ -333,13 +349,38 @@ class Gta3Vm::Execution
       self.exe = exe
     end
 
-    def [](pg_id,type)
-      arg = Gta3Vm::Instruction::Arg.new([type,exe.read_variable(pg_id)])
-      exe.vm.arg_to_native(arg)
-      # exe.vm.arg_to_native(type,exe.read_variable(pg_id))
+    def normalize_type(type)
+      # HACK: allow :int in variables[foo,:int]
+      {int: :int32}[type] || type
     end
 
-    def []=(pg_id,(type,value))
+    def [](*args)
+      puts "[]: #{args.inspect}"
+      if args.length == 1
+        type, pg_id = *args[0].to_a[0]
+      elsif args.length == 2
+        pg_id, type = *args
+      end
+      type = normalize_type(type)
+      arg = Gta3Vm::Instruction::Arg.new([type,exe.read_variable(pg_id)])
+      exe.vm.arg_to_native(arg)
+    end
+
+    def []=(*args)
+      puts "[]= #{args.inspect}"
+      # if args.length == 1 && args[0].is_a?(Array)
+        # type, value = *args[0]
+      # els
+
+      if args.length == 2 && args[0].is_a?(Hash)
+        type, pg_id = *args[0].to_a[0]
+        value = args[1]
+      elsif args.length == 2
+        pg_id, (type, value) = *args
+      elsif args.length == 3
+        pg_id, type, value = *args
+      end
+      type = normalize_type(type)
       exe.allocate( exe.vm.memory.structure[:memory].begin + pg_id, type, value)
     end
   end
