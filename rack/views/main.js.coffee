@@ -77,7 +77,7 @@ class VmClient
       @memory_size = end
 
   update_variables_html: (data) =>
-    return
+    # return
     if data.variables_html
       $('#variables .variables').html(data.variables_html)
 

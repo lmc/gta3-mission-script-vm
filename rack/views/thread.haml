@@ -3,15 +3,15 @@
     %th ID
     %th Name
     %th PC
-    %th Mission
-    %th BaseOff
+    / %th Mission
+    / %th BaseOff
     %th IdleUntil
     %th Pri
   %tr
     %td.id= locals[:thread_id]
     %td.name= locals[:thread].name
     %td.pc= locals[:thread].pc
-    %td.is_mission= locals[:thread].is_mission.inspect
-    %td.base_offset= locals[:thread].base_offset.inspect
+    / %td.is_mission= locals[:thread].is_mission.inspect
+    / %td.base_offset= locals[:thread].base_offset.inspect
     %td.idle_until= locals[:thread].idle_until.inspect
     %td.pri= (locals[:thread].idle_until ? locals[:thread].execution.realtime - locals[:thread].idle_until : nil).inspect

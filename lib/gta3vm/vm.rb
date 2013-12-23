@@ -56,10 +56,10 @@ class Gta3Vm::Vm
     self.opcodes = Gta3Vm::Opcodes.new(self)
 
     self.memory = Gta3Vm::Memory.new(self,options[:bytecode])
-    self.memory.detect_structure if self.memory.has_structure?
   end
 
   def execute(&block)
+    self.memory.detect_structure if self.memory.has_structure?
     execution = Gta3Vm::Execution.new(self)
     if block_given?
       begin
@@ -156,7 +156,8 @@ class Gta3Vm::Vm
   # ####################
 
   def self.new_for_vc
-    Gta3Vm::VmViceCity.new(bytecode: File.read("./main-vc-orig.scm"))
+    # Gta3Vm::VmViceCity.new(bytecode: File.read("./main-vc-orig.scm"))
+    Gta3Vm::VmViceCity.new(bytecode: File.read("./assembled.scm"))
   end
 
   def self.new_for_gta3

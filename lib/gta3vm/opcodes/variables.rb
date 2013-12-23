@@ -21,3 +21,14 @@ end
 opcode("04AE", "set_global_int_or_float", out:pg, value:int_or_float ) do |args|
   variables[args.out] = args.value_type, args.value
 end
+
+opcode("0058", :ADD_INT_VAR_TO_INT_VAR, out:pg, to_add:pg ) do |args|
+  value  = variables[args.out,    :int32]
+  value += variables[args.to_add, :int32]
+  variables[args.out] = :int32, value
+end
+
+opcode("0084", :SET_VAR_INT_TO_VAR_INT, out:pg, in:pg ) do |args|
+  variables[args.out] = :int32, variables[args.in, :int32]
+end
+

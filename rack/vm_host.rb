@@ -136,7 +136,7 @@ class VmHost < Sinatra::Base
         classes << "instruction_begin" << "instruction_opcode"
         opcode = $vm.memory.read(pos,2)
         opcode_def = $vm.opcodes.definition_for(opcode)
-        opcode_name = opcode_def.sym_name.gsub(/^auto_[0-9a-f]+_/i,'')
+        opcode_name = opcode_def.sym_name#.gsub(/^auto_[0-9a-f]+_/i,'')
         extra = "instruction_name'>#{opcode_name}</span><span class='"
       elsif opcode_start + 1 == pos
         classes << "instruction_opcode"
@@ -163,7 +163,7 @@ class VmHost < Sinatra::Base
       thread_pcs: $exe.threads.map(&:pc),
       thread_html: $exe.threads.each_with_index.map{|thread,thread_id| haml :thread, layout: false, locals: {thread: thread, thread_id: thread_id}},
       current_instruction_inspect: haml(:inspect, layout: false, locals: {pos: $exe.pc, vm: $vm}),
-      # variables_html: render_variables_html
+      variables_html: render_variables_html
     }
   end
 

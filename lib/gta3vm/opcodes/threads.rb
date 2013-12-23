@@ -17,8 +17,11 @@ end
 
 opcode("004F", "thread_create_with_args", var_args:int) do |args|
   thread_create( args.var_args[0] )
+  args_count = args.var_args.length - 1
+  args_count -= 1 if args.var_args[-1] == [0]
+  puts "thread_create_with_args: #{args.var_args.length} #{args_count}"
   # TODO: assign rest of var_args to thread vars
-  assert( args.var_args.length > 1, "unassigned thread vars" )
+  assert( args_count < 1, "unassigned thread vars" )
 end
 
 

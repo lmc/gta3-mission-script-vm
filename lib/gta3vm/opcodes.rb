@@ -36,6 +36,19 @@ class Gta3Vm::Opcodes
     self.opcode_data[opcode]
   end
 
+  def definition_for_name(opcode_name)
+    @_definition_for_name ||= {}
+    if @_definition_for_name.key?(opcode_name)
+      @_definition_for_name[opcode_name]
+    else
+      value = self.opcode_data.values.detect do |opcode_def|
+        opcode_name =~ /^#{opcode_def.symbol_name}$/i
+      end
+      @_definition_for_name[opcode_name] = value
+      value
+    end
+  end
+
   # Conditional opcodes can have the highest bit of the opcode set to 1
   # So they look like 8038 instead of 0038
   # This is basically a NOT version of the normal opcode
@@ -111,9 +124,10 @@ class Gta3Vm::Opcodes
   def opcode(opcode_name_string,sym_name,arguments_definition = {},&block)
     opcode_bytes = opcode_name_string.scan(/(..)/).map{|hex| hex[0].to_i(16) }.reverse
     self.opcode_data[opcode_bytes] = Gta3Vm::OpcodeDefinition.new({
+      :bytes      => opcode_bytes,
       :sym_name   => sym_name.to_s,
       :nice       => opcode_name_string,
-      :symbol_name=> self.symbol_names[opcode_name_string],
+      :symbol_name=> self.symbol_names[opcode_name_string] || sym_name,
       :args_count => arguments_definition.size,
       :args_names => arguments_definition.keys,
       :args_types => arguments_definition.values.map { |type| type }

@@ -30,7 +30,7 @@ module Gta3Vm::Vm::DataTypeMethods
   end
 
   def type_shorthand_to_int(shorthand)
-    
+    self.class.data_types.invert[shorthand]
   end
 
   def type_shorthand_to_pack_char(shorthand)

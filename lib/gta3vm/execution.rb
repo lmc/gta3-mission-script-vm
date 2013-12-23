@@ -203,6 +203,7 @@ class Gta3Vm::Execution
     raise ArgumentError, "data_type is nil" unless data_type
     size = 4
 
+    data_type = vm.normalize_type(data_type)
     store_as = { 0x01=>0x01, 0x04=>0x01, 0x05=>0x01,  0x06=>0x06 }[data_type]
     raise ArgumentError, "no store_as entry for data_type #{data_type.inspect}" unless store_as
 
@@ -242,6 +243,87 @@ class Gta3Vm::Execution
   # end
 
 
+  # TODO: new opcodes dsl
+  #
+  #
+  # * use instance_eval into openstruct for args, ie.
+  #
+  #   opcode("0007", :SET_LVAR_FLOAT, out:lg, value:float ) do |args|
+  #     locals[args.out] = :float32, args.value
+  #   end
+  #   
+  #   opcode("0008", :ADD_VAL_TO_INT_VAR, out:pg, value:int ) do |args|
+  #     variables[args.out] = :int32, variables[args.out,:int32] + args.value
+  #   end
+  #
+  # =>
+  #
+  #   opcode("0007", :SET_LVAR_FLOAT, out:lg, value:float ) do |args|
+  #     locals[out] = :float32, value
+  #   end
+  #
+  #   opcode("0008", :ADD_VAL_TO_INT_VAR, out:pg, value:int ) do |args|
+  #     variables[out] = :int32, variables[out,:int32] + value
+  #   end
+  #
+  #
+  # * don't use `out` for address of setting var (wtf is wrong w/u)
+  #
+  #   opcode("0008", :ADD_VAL_TO_INT_VAR, var:pg, value:int ) do
+  #     variables[var] = :int32, variables[var,:int32] + value
+  #   end
+  #
+  # * can use nicer grouping for memory[]=
+  # 
+  #    variables[var] = :int32, value
+  #  =>
+  #    variables[var,:int32] = value
+  #
+  # 
+  # * nice metadata construct for opcodes
+  #
+  # * use intuitive pointer/typeof syntax
+  # 
+  # * vm/sys call list
+  #   *
+  #   * assert bool:condition, string:message
+  #   * 
+  #   * jump  pc
+  #   * gosub  pc
+  #   * return
+  #   *
+  #   * condition_start  int:expected_num_flags, and_or
+  #   * condition_flag  bool
+  #   * condition_result
+  #   *
+  #   * global_var_get  var, type
+  #   * global_var_set  var, type, value
+  #   * 
+  #   * local_var_get  local, type
+  #   * local_var_set  local, type, value
+  #   * 
+  #   * thread_create  pc
+  #   * thread_create_with_args  pc, args
+  #   * thread_create_mission  pc
+  #   * thread_destroy
+  #   * thread_idle  ms
+  #   * thread_set_name  string:name
+  #   * 
+  #
+  #
+  # * potential new opcodes 
+  #   * 05C2 - SAVE_STRING_TO_DEBUG_FILE
+  #   * 0600 - 06FF
+  #     * real OS time
+  #     * read stdin
+  #     * write stdout
+  #     * string to int/float
+  #     * strfprint
+  #     * vm new opcode hook: VM_HOOK 0699, arg_struct, scm_offset_for_code
+
+
+
+
   # #####################
 
   class VariablesProxy
@@ -252,7 +334,9 @@ class Gta3Vm::Execution
     end
 
     def [](pg_id,type)
-      exe.arg_to_native(type,exe.read_variable(pg_id))
+      arg = Gta3Vm::Instruction::Arg.new([type,exe.read_variable(pg_id)])
+      exe.vm.arg_to_native(arg)
+      # exe.vm.arg_to_native(type,exe.read_variable(pg_id))
     end
 
     def []=(pg_id,(type,value))

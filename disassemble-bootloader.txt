@@ -1,0 +1,44 @@
+goto $:init_models
+MEMORY 64
+
+:init_models
+goto $:init_missions
+MODEL_COUNT 0
+
+:init_missions
+goto $:init_main
+MISSION_COUNT 0
+
+
+:init_main
+script_name s"BOOTLDR"
+
+start_new_script $:task_fib
+
+
+:idle
+wait 0
+goto $:idle
+
+
+:task_fib
+script_name s"FIB"
+set_var_int $task_fib_ticks 0
+set_var_int $task_fib_sum 0
+set_var_int $task_fib_a 0
+set_var_int $task_fib_b 1
+
+:task_fib_work
+set_var_int $task_fib_sum 0
+add_int_var_to_int_var $task_fib_sum $task_fib_a
+add_int_var_to_int_var $task_fib_sum $task_fib_b
+set_var_int_to_var_int $task_fib_b $task_fib_a
+set_var_int_to_var_int $task_fib_a $task_fib_sum
+add_val_to_int_var $task_fib_ticks 1
+wait 0
+goto $:task_fib_work
+
+# tasks:
+# WORLDGO - init world
+# WORLDMN - monitor world
+# TFIB    - task: fib sequence

@@ -71,6 +71,7 @@ class Gta3Vm::Disassembler
 
     offset = vm.memory.structure[:memory].end
     offset += disassemble_instruction_at(offset).size
+    emit_declare(offset, :MODEL_COUNT, vm.memory.structure_models.count)
     vm.memory.structure_models.each_with_index do |model,idx|
       emit_declare(offset, :MODEL, idx,model)
       # ast_emit_declare_model(offset,idx,model)
@@ -78,6 +79,7 @@ class Gta3Vm::Disassembler
 
     offset = vm.memory.structure[:models].end
     offset += disassemble_instruction_at(offset).size
+    emit_declare(offset, :MISSION_COUNT, vm.memory.structure_missions.count)
     vm.memory.structure_missions.each_with_index do |mission_offset,idx|
       self.observed_jumps << mission_offset
       emit_declare(offset, :MISSION, idx,"$:#{emit_label_name(mission_offset,mission_offset)}")
@@ -198,7 +200,10 @@ class Gta3Vm::Disassembler
       self.observed_thread_names[offset] = name
     end
 
-    emit_declare(offset,definition.symbol_name,*args)
+    name = definition.symbol_name
+    name = name.downcase
+
+    emit_declare(offset,name,*args)
   end
 
   def emit_arg(instruction_offset,instruction,arg_idx,type,value)
@@ -208,6 +213,8 @@ class Gta3Vm::Disassembler
       else
         "$:#{emit_label_name(value,instruction_offset)}"
       end
+    elsif value.is_a?(String) 
+      "s\"#{value}\""
     else
       case vm.type_int_to_shorthand(type)
       when :pg
@@ -215,7 +222,7 @@ class Gta3Vm::Disassembler
       when :pl
         "@#{value}"
       else
-        value
+        "#{value.inspect}"
       end
     end
   end
