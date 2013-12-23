@@ -13,7 +13,7 @@ MISSION_COUNT 0
 :init_main
 script_name s"BOOTLDR"
 
-start_new_script $:task_fib
+start_new_script $:task_lfib
 
 
 :idle
@@ -37,6 +37,24 @@ set_var_int_to_var_int $task_fib_a $task_fib_sum
 add_val_to_int_var $task_fib_ticks 1
 wait 0
 goto $:task_fib_work
+
+
+:task_lfib
+script_name s"lFIB"
+set_lvar_int @0 0
+set_lvar_int @1 0
+set_lvar_int @2 0
+set_lvar_int @3 1
+
+:task_lfib_work
+set_lvar_int @1 0
+add_int_lvar_to_int_lvar @1 @2
+add_int_lvar_to_int_lvar @1 @3
+set_lvar_int_to_lvar_int @3 @2
+set_lvar_int_to_lvar_int @2 @1
+add_val_to_int_lvar @0 1
+wait 0
+goto $:task_lfib_work
 
 # tasks:
 # WORLDGO - init world

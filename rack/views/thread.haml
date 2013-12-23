@@ -15,3 +15,14 @@
     / %td.base_offset= locals[:thread].base_offset.inspect
     %td.idle_until= locals[:thread].idle_until.inspect
     %td.pri= (locals[:thread].idle_until ? locals[:thread].execution.realtime - locals[:thread].idle_until : nil).inspect
+
+%table.table.table-bordered.table-condensed
+  - keys = locals[:thread].locals.keys.sort
+  %tr
+    - keys.each do |lvar_idx|
+      %th= lvar_idx
+  %tr
+    - keys.each do |lvar_idx|
+      - arg_type = locals[:thread].locals_types[lvar_idx]
+      - arg = Gta3Vm::Instruction::Arg.new([arg_type, locals[:thread].locals[lvar_idx] ])
+      %td= locals[:vm].arg_to_native(arg)

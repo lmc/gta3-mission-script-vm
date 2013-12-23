@@ -161,7 +161,7 @@ class VmHost < Sinatra::Base
       cpu: haml(:cpu, layout: false, locals: {vm: $vm, exe: $exe}),
       thread_id: $exe.thread_id,
       thread_pcs: $exe.threads.map(&:pc),
-      thread_html: $exe.threads.each_with_index.map{|thread,thread_id| haml :thread, layout: false, locals: {thread: thread, thread_id: thread_id}},
+      thread_html: $exe.threads.each_with_index.map{|thread,thread_id| haml :thread, layout: false, locals: {vm: $vm, thread: thread, thread_id: thread_id}},
       current_instruction_inspect: haml(:inspect, layout: false, locals: {pos: $exe.pc, vm: $vm}),
       variables_html: render_variables_html
     }

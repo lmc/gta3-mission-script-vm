@@ -88,7 +88,14 @@ class Gta3Vm::Assembler < Gta3Vm::Disassembler
       end
     when /^\$(\w+)$/ # global var
       value = observe_global_variable($1, output.pos + 1)
-      arg_type = vm.type_shorthand_to_int(:int16)
+      arg_type = vm.type_shorthand_to_int(:pg)
+      "".tap do |arg|
+        arg << arg_type.chr
+        arg << vm.native_to_arg_value(arg_type,value).map(&:chr).join
+      end
+    when /^\@(\w+)$/ # local var
+      value = $1.to_i
+      arg_type = vm.type_shorthand_to_int(:pl)
       "".tap do |arg|
         arg << arg_type.chr
         arg << vm.native_to_arg_value(arg_type,value).map(&:chr).join

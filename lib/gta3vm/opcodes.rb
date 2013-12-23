@@ -22,6 +22,7 @@ class Gta3Vm::Opcodes
       int, float, bool, string = :int, :float, :bool, :string
       pg, lg = :pg, :lg
       int_or_float, int_or_var, float_or_var = :int_or_float, :int_or_var, :float_or_var
+      number = num = int_or_float
       var = :pg
       local, lvar = :lg
       log "load_opcode_definitions: loading #{path}"

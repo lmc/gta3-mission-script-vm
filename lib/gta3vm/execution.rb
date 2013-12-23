@@ -66,7 +66,6 @@ class Gta3Vm::Execution
 
   def thread_create(pc,is_mission = false)
     self.threads << VmThread.new(vm,self,pc,is_mission)
-    # self.thread_id = self.threads.size - 1 if self.switch_on_new_thread
     self.thread_pass if self.switch_on_new_thread
   end
 
@@ -247,7 +246,10 @@ class Gta3Vm::Execution
   end
 
   def locals
-    current_thread.locals
+    LocalsProxy.new(self,current_thread)
+  end
+  def lvars
+    locals
   end
 
   def read_variable(pg_id)
@@ -261,6 +263,8 @@ class Gta3Vm::Execution
 
   # TODO: new opcodes dsl
   #
+  # * fixup terrible arg_to_native(arg)
+  #   => arg_to_native(type,data)
   #
   # * use instance_eval into openstruct for args, ie.
   #
@@ -351,7 +355,7 @@ class Gta3Vm::Execution
 
     def normalize_type(type)
       # HACK: allow :int in variables[foo,:int]
-      {int: :int32}[type] || type
+      {int: :int32,float: :float32}[type] || type
     end
 
     def [](*args)
@@ -368,10 +372,6 @@ class Gta3Vm::Execution
 
     def []=(*args)
       puts "[]= #{args.inspect}"
-      # if args.length == 1 && args[0].is_a?(Array)
-        # type, value = *args[0]
-      # els
-
       if args.length == 2 && args[0].is_a?(Hash)
         type, pg_id = *args[0].to_a[0]
         value = args[1]
@@ -382,6 +382,36 @@ class Gta3Vm::Execution
       end
       type = normalize_type(type)
       exe.allocate( exe.vm.memory.structure[:memory].begin + pg_id, type, value)
+    end
+  end
+
+  class LocalsProxy < VariablesProxy
+    attr_accessor :thread
+
+    def initialize(exe,thread)
+      self.exe = exe
+      self.thread = thread
+    end
+
+    def [](*args)
+      puts "[LocalsProxy]: #{args.inspect}"
+      type, lvar_idx = *args[0].to_a[0]
+      type = normalize_type(type)
+  
+      arg = Gta3Vm::Instruction::Arg.new([type, thread.locals[ lvar_idx ] ])
+      exe.vm.arg_to_native(arg)
+    end
+
+    def []=(*args)
+      puts "LocalsProxy[]= #{args.inspect}"
+      type, lvar_idx = *args[0].to_a[0]
+      value = args[1]
+      type = normalize_type(type)
+
+      value = exe.vm.native_to_arg_value(type,value)
+
+      thread.locals[ lvar_idx ] = value
+      thread.locals_types[ lvar_idx ] = type
     end
   end
 
@@ -435,6 +465,9 @@ class Gta3Vm::Execution
 
     attr_accessor :is_mission
 
+    attr_accessor :locals
+    attr_accessor :locals_types
+
     def initialize(vm,execution,pc = 0,is_mission = false)
       self.vm = vm
       self.execution = execution
@@ -444,6 +477,8 @@ class Gta3Vm::Execution
         self.base_offset = pc
       end
       self.idle_until = 0
+      self.locals = Hash.new{|h,k| h[k] = [0x00,0x00,0x00,0x00] }
+      self.locals_types = Hash.new
     end
   end
 
