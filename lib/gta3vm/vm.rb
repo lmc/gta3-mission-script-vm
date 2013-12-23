@@ -29,6 +29,7 @@ require "gta3vm/vm/data_type_methods.rb"
 require "gta3vm/instrumentation.rb"
 
 require "gta3vm/disassembler.rb"
+require "gta3vm/assembler.rb"
 
 
 # load "lib/gta3vm/core_extensions.rb"
@@ -75,6 +76,10 @@ class Gta3Vm::Vm
 
   def disassemble
     Gta3Vm::Disassembler.new(self).disassemble
+  end
+
+  def assemble
+    Gta3Vm::Assembler.new(self).assemble
   end
 
   def instruction_at(offset)
